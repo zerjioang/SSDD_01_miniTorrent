@@ -3,13 +3,13 @@ package es.deusto.ssdd.code.tracker.view;
 import java.awt.event.ActionEvent;
 
 /**
- * Created by .local on 18/10/2016.
+ * Created by .local
  */
 public enum TrackerGUIEvents {
     MENU_CONFIGURE_TRACKER {
         @Override
         public void event(ActionEvent event) {
-            System.out.println("Configure tracker event detected");
+            System.out.println(event.toString() + "Configure tracker event detected");
         }
     }, MENU_ABOUT {
         @Override
