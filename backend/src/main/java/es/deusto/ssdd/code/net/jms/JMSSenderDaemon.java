@@ -3,43 +3,62 @@ package es.deusto.ssdd.code.net.jms;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 import javax.jms.*;
+import java.util.ArrayList;
 
 public class JMSSenderDaemon implements Runnable {
 
+    private final String trackerId;
     private String serviceName;
     private String connectionId;
+    private MessageProducer producer;
+    private Connection connection;
+    private Destination destination;
+    private Session session;
+    private boolean keepAlive;
+    private ArrayList<TrackerMessage> messagesToSend;
 
-    public JMSSenderDaemon(String connectionId, String serviceName) throws JMSException {
-        if (serviceName == null)
-            throw new JMSException("A service name is needed for JMS Message sender creation");
-        if (connectionId == null)
-            throw new JMSException("A server connection ID is needed for JMS Message sender creation");
-        this.serviceName = serviceName;
-        this.connectionId = connectionId;
+    public JMSSenderDaemon(String trackerId, String connectionId, String serviceName) {
+        this.trackerId = trackerId;
+        try {
+            if (serviceName == null)
+                throw new JMSException("A service name is needed for JMS Message sender creation");
+            if (connectionId == null)
+                throw new JMSException("A server connection ID is needed for JMS Message sender creation");
+            this.serviceName = serviceName;
+            this.connectionId = connectionId;
+            this.keepAlive = true;
+            this.messagesToSend = new ArrayList<>();
+        } catch (JMSException e) {
+            e.printStackTrace();
+        }
     }
 
     public void run() {
+        System.out.println("JMS Daemon sender [STARTED]");
         try {
             // Create a Connection
-            Connection connection = createConnection(connectionId);
+            connection = createConnection(connectionId);
 
             // Create a Session
-            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
             // Create the destination Queue
-            Destination destination = createQueue(session);
+            destination = createTopic(session);
 
             // Create a MessageProducer from the Session to the Queue
-            MessageProducer producer = createMessageProducer(session, destination);
+            producer = createMessageProducer(session, destination);
 
-            // Create a messages
-            String text = "Hello world! From: " + Thread.currentThread().getName() + " : " + this.hashCode();
-            TextMessage message = createMessage(session, text);
-
-            sendMessage(producer, message);
+            while (keepAlive) {
+                if (!messagesToSend.isEmpty()) {
+                    //get the first message on the queue and send it
+                    Message message = messagesToSend.remove(0).getMessage(this);
+                    this.sendMessage(producer, message);
+                }
+            }
 
             // Clean up
             closeSender(connection, session);
+            System.out.println("JMS Daemon sender [STOPPED]");
         } catch (Exception ex) {
             System.err.println("# JMSSenderDaemon error: " + ex.getMessage());
         }
@@ -87,14 +106,14 @@ public class JMSSenderDaemon implements Runnable {
         return session.createTextMessage(text);
     }
 
-    private void sendMessage(MessageProducer producer, TextMessage message) throws JMSException {
+    private void sendMessage(MessageProducer producer, Message message) throws JMSException {
         // Tell the producer to send the message
         if (producer == null)
             throw new JMSException("There is no message producer defined for sending a message");
         if (message == null) {
             throw new JMSException("There is no valid message to send");
         }
-        System.out.println("-> Sent message: " + message.hashCode() + " : " + Thread.currentThread().getName());
+        System.out.println(">> Tracker ID: " + trackerId + " sending message " + message.toString());
         producer.send(message);
     }
 
@@ -105,5 +124,81 @@ public class JMSSenderDaemon implements Runnable {
             throw new JMSException("There is no session to close");
         session.close();
         connection.close();
+    }
+
+    public boolean send(TrackerMessage message) throws JMSException {
+        System.out.println("Waiting message " + message + " to be sent");
+        if (message != null) {
+            this.messagesToSend.add(message);
+        }
+        return false;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public String getConnectionId() {
+        return connectionId;
+    }
+
+    public void setConnectionId(String connectionId) {
+        this.connectionId = connectionId;
+    }
+
+    public MessageProducer getProducer() {
+        return producer;
+    }
+
+    public void setProducer(MessageProducer producer) {
+        this.producer = producer;
+    }
+
+    public Connection getConnection() {
+        return connection;
+    }
+
+    public void setConnection(Connection connection) {
+        this.connection = connection;
+    }
+
+    public Destination getDestination() {
+        return destination;
+    }
+
+    public void setDestination(Destination destination) {
+        this.destination = destination;
+    }
+
+    public Session getSession() {
+        return session;
+    }
+
+    public void setSession(Session session) {
+        this.session = session;
+    }
+
+    public boolean isKeepAlive() {
+        return keepAlive;
+    }
+
+    public void setKeepAlive(boolean keepAlive) {
+        this.keepAlive = keepAlive;
+    }
+
+    public ArrayList<TrackerMessage> getMessagesToSend() {
+        return messagesToSend;
+    }
+
+    public void setMessagesToSend(ArrayList<TrackerMessage> messagesToSend) {
+        this.messagesToSend = messagesToSend;
+    }
+
+    public String getTrackerId() {
+        return trackerId;
     }
 }

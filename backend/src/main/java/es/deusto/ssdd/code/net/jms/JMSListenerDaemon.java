@@ -1,6 +1,8 @@
 package es.deusto.ssdd.code.net.jms;
 
+import es.deusto.ssdd.code.net.jms.model.TrackerHello;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.command.ActiveMQObjectMessage;
 import org.apache.activemq.command.ActiveMQTextMessage;
 
 import javax.jms.*;
@@ -10,25 +12,35 @@ import javax.jms.*;
  */
 public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMessageParser {
 
-    private final String connectionId;
-    private final String serviceName;
+    private String connectionId;
+    private String serviceName;
     private boolean serviceEnabled;
+    private Connection connection;
+    private Session session;
+    private Destination destination;
+    private MessageConsumer consumer;
+    private String trackerId;
 
-    public JMSListenerDaemon(String connectionId, String serviceName) throws JMSException {
-        if (serviceName == null) {
-            throw new JMSException("There is no service name defined before setting up JMS Listener");
+    public JMSListenerDaemon(String trackerId, String connectionId, String serviceName) {
+        this.trackerId = trackerId;
+        try {
+            if (serviceName == null) {
+                throw new JMSException("There is no service name defined before setting up JMS Listener");
+            }
+            if (connectionId == null) {
+                throw new JMSException("There is JMS service ID  defined before setting up JMS Listener");
+            }
+            this.connectionId = connectionId;
+            this.serviceName = serviceName;
+            serviceEnabled = true;
+        } catch (JMSException e) {
+            e.printStackTrace();
         }
-        if (connectionId == null) {
-            throw new JMSException("There is JMS service ID  defined before setting up JMS Listener");
-        }
-        this.connectionId = connectionId;
-        this.serviceName = serviceName;
-        serviceEnabled = true;
     }
 
     public void run() {
+        System.out.println("JMS Daemon listener [STARTED]");
         while (serviceEnabled) {
-            System.out.println("JMS Daemon listener [STARTED]");
             runDaemonListener();
         }
         System.out.println("JMS Daemon listener [STOPPED]");
@@ -37,16 +49,16 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
     private void runDaemonListener() {
         try {
             // Create a Connection
-            Connection connection = createConnection();
+            connection = createConnection();
 
             // Create a Session
-            Session session = createSession(connection);
+            session = createSession(connection);
 
             // Create the destination Queue
-            Destination destination = createDestinationQueue(session);
+            destination = createDestinationTopic(session);
 
             // Create a MessageConsumer from the Session to the Queue
-            MessageConsumer consumer = createConsumer(session, destination);
+            consumer = createConsumer(session, destination);
 
             // Wait for a message
             readMessage(consumer);
@@ -104,18 +116,21 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
             Message message = consumer.receive(1000);
             processReceivedMessage(message);
         }
-        throw new JMSException("No consumer defined when attempting to read a message");
     }
 
     private void processReceivedMessage(Message message) throws JMSException {
         if (message != null) {
+            System.out.println("<< Tracker ID: " + trackerId);
             parseMessageContent(message);
         }
-        throw new JMSException("No message defined when attempting to parse it.");
     }
 
     private Destination createDestinationQueue(Session session) throws JMSException {
         return session.createQueue(serviceName);
+    }
+
+    private Destination createDestinationTopic(Session session) throws JMSException {
+        return session.createTopic(serviceName);
     }
 
     private Session createSession(Connection connection) throws JMSException {
@@ -149,9 +164,22 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
         try {
             if (message.getClass().equals(ActiveMQTextMessage.class)) {
                 TextMessage textMessage = (TextMessage) message;
-                System.err.println("<- Received TextMessage: " + textMessage.getText());
+                System.out.println("<- " + trackerId + "Received TextMessage: " + textMessage.getText());
+            } else if (message.getClass().equals(ActiveMQObjectMessage.class)) {
+                ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
+                Object o = objectMessage.getObject();
+
+                if (o.getClass().equals(TrackerHello.class)) {
+                    TrackerHello th = (TrackerHello) o;
+                    if (th.isMine(trackerId)) {
+                        System.out.println("\t Drop message");
+                    } else {
+                        System.out.println("\t Handshake message detected from instance " + th.getTrackerId());
+
+                    }
+                }
             } else {
-                System.err.println("<- Received a Message: " + message);
+                System.out.println("<- Received a Message: " + message);
             }
         } catch (JMSException ex) {
             System.err.println("# JMS Listener MESSAGE PARSING Exception occured: " + ex.getMessage());
@@ -159,6 +187,26 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
     }
 
     //SETTERS Y GETTERS
+
+    public String getConnectionId() {
+        return connectionId;
+    }
+
+    public void setConnectionId(String connectionId) {
+        this.connectionId = connectionId;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public boolean isServiceEnabled() {
+        return serviceEnabled;
+    }
 
     public void setServiceEnabled(boolean serviceEnabled) {
         this.serviceEnabled = serviceEnabled;
