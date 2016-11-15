@@ -1,17 +1,16 @@
-package es.deusto.ssdd.code.net.jms;
+package es.deusto.ssdd.code.net.jms.listener;
 
-import es.deusto.ssdd.code.net.jms.model.TrackerHello;
+import es.deusto.ssdd.code.net.jms.message.JMSMessageParser;
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.activemq.command.ActiveMQObjectMessage;
-import org.apache.activemq.command.ActiveMQTextMessage;
 
 import javax.jms.*;
 
 /**
  * Created by .local on 08/11/2016.
  */
-public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMessageParser {
+public class JMSListenerDaemon implements Runnable, ExceptionListener {
 
+    private JMSMessageParser parser;
     private String connectionId;
     private String serviceName;
     private boolean serviceEnabled;
@@ -23,6 +22,7 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
 
     public JMSListenerDaemon(String trackerId, String connectionId, String serviceName) {
         this.trackerId = trackerId;
+        this.parser = new JMSMessageParser(trackerId, connectionId, serviceName);
         try {
             if (serviceName == null) {
                 throw new JMSException("There is no service name defined before setting up JMS Listener");
@@ -120,7 +120,7 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
 
     private void processReceivedMessage(Message message) throws JMSException {
         if (message != null) {
-            parseMessageContent(message);
+            parser.process(message);
         }
     }
 
@@ -155,33 +155,6 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
 
     public synchronized void onException(Exception ex) {
         System.err.println("# JMS Listener Daemon Exception occured: " + ex.getMessage());
-    }
-
-    //INTERFACES OVERWRITE
-
-    public void parseMessageContent(Message message) {
-        try {
-            if (message.getClass().equals(ActiveMQTextMessage.class)) {
-                TextMessage textMessage = (TextMessage) message;
-                System.out.println(trackerId + " << RECEIVE << "+serviceName+"/"+connectionId +" << "+ textMessage.getText());
-            } else if (message.getClass().equals(ActiveMQObjectMessage.class)) {
-                ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
-                Object o = objectMessage.getObject();
-
-                if (o.getClass().equals(TrackerHello.class)) {
-                    TrackerHello th = (TrackerHello) o;
-                    if (th.isMine(trackerId)) {
-                        System.out.println(trackerId + " << DROP << "+serviceName+"/"+connectionId +" << "+ th.toString());
-                    } else {
-                        System.out.println(trackerId + " << RECEIVED << "+serviceName+"/"+connectionId +" << "+ th.toString());
-                    }
-                }
-            } else {
-                System.out.println("<- Received a Message: " + message);
-            }
-        } catch (JMSException ex) {
-            System.err.println("# JMS Listener MESSAGE PARSING Exception occured: " + ex.getMessage());
-        }
     }
 
     //SETTERS Y GETTERS

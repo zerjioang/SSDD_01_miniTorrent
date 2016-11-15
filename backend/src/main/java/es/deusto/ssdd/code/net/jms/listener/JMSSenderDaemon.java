@@ -1,5 +1,6 @@
-package es.deusto.ssdd.code.net.jms;
+package es.deusto.ssdd.code.net.jms.listener;
 
+import es.deusto.ssdd.code.net.jms.message.MessageCollection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 import javax.jms.*;
@@ -15,7 +16,7 @@ public class JMSSenderDaemon implements Runnable {
     private Destination destination;
     private Session session;
     private boolean keepAlive;
-    private ArrayList<TrackerMessage> messagesToSend;
+    private ArrayList<MessageCollection> messagesToSend;
 
     public JMSSenderDaemon(String trackerId, String connectionId, String serviceName) {
         this.trackerId = trackerId;
@@ -126,8 +127,7 @@ public class JMSSenderDaemon implements Runnable {
         connection.close();
     }
 
-    public boolean send(TrackerMessage message) throws JMSException {
-        System.out.println("Waiting message " + message + " to be sent");
+    public boolean send(MessageCollection message) throws JMSException {
         if (message != null) {
             this.messagesToSend.add(message);
         }
@@ -190,11 +190,11 @@ public class JMSSenderDaemon implements Runnable {
         this.keepAlive = keepAlive;
     }
 
-    public ArrayList<TrackerMessage> getMessagesToSend() {
+    public ArrayList<MessageCollection> getMessagesToSend() {
         return messagesToSend;
     }
 
-    public void setMessagesToSend(ArrayList<TrackerMessage> messagesToSend) {
+    public void setMessagesToSend(ArrayList<MessageCollection> messagesToSend) {
         this.messagesToSend = messagesToSend;
     }
 
