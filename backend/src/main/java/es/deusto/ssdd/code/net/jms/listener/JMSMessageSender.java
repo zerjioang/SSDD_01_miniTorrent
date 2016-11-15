@@ -56,6 +56,8 @@ public class JMSMessageSender implements Runnable {
                     Message message = messagesToSend.remove(0).getMessage(this);
                     this.sendMessage(producer, message);
                 }
+
+                Thread.sleep(50);
             }
 
             // Clean up
