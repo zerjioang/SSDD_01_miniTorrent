@@ -1,4 +1,4 @@
-package es.deusto.ssdd.code.spec.persistent;
+package es.deusto.ssdd.code.net.bittorrent.persistent;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

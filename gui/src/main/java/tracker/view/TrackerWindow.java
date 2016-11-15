@@ -1,4 +1,4 @@
-package es.deusto.ssdd.code.tracker.view;
+package tracker.view;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

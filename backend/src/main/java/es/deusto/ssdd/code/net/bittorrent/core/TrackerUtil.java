@@ -1,4 +1,4 @@
-package es.deusto.ssdd.code.spec.core;
+package es.deusto.ssdd.code.net.bittorrent.core;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
