@@ -15,11 +15,6 @@ public class TrackerHello implements Serializable, IJMSMessage {
         this.trackerId = trackerId;
     }
 
-    public boolean isMine(String trackerId) {
-        return this.getSourceTrackerId().equals(trackerId);
-    }
-
-
     @Override
     public void onReceivedEvent() {
         System.out.println(getSourceTrackerId()+" :: Adding discovered new node to local collection");

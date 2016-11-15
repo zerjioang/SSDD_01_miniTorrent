@@ -6,11 +6,12 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import javax.jms.*;
 import java.util.ArrayList;
 
-public class JMSSenderDaemon implements Runnable {
+public class JMSMessageSender implements Runnable {
 
     private final String trackerId;
     private String serviceName;
     private String connectionId;
+
     private MessageProducer producer;
     private Connection connection;
     private Destination destination;
@@ -18,7 +19,7 @@ public class JMSSenderDaemon implements Runnable {
     private boolean keepAlive;
     private ArrayList<MessageCollection> messagesToSend;
 
-    public JMSSenderDaemon(String trackerId, String connectionId, String serviceName) {
+    public JMSMessageSender(String trackerId, String connectionId, String serviceName) {
         this.trackerId = trackerId;
         try {
             if (serviceName == null)
@@ -61,7 +62,7 @@ public class JMSSenderDaemon implements Runnable {
             closeSender(connection, session);
             System.out.println("JMS Daemon sender [STOPPED]");
         } catch (Exception ex) {
-            System.err.println("# JMSSenderDaemon error: " + ex.getMessage());
+            System.err.println("# JMSMessageSender error: " + ex.getMessage());
         }
     }
 

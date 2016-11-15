@@ -1,6 +1,6 @@
 package es.deusto.ssdd.code.net.jms.message;
 
-import es.deusto.ssdd.code.net.jms.listener.JMSSenderDaemon;
+import es.deusto.ssdd.code.net.jms.listener.JMSMessageSender;
 import es.deusto.ssdd.code.net.jms.message.wrapper.TrackerHello;
 
 import javax.jms.JMSException;
@@ -13,7 +13,7 @@ public enum MessageCollection {
 
     HELLO_WORLD {
         @Override
-        public Message getMessage(JMSSenderDaemon sender) throws JMSException {
+        public Message getMessage(JMSMessageSender sender) throws JMSException {
             return sender
                     .getSession()
                     .createObjectMessage(
@@ -24,5 +24,5 @@ public enum MessageCollection {
         }
     };
 
-    public abstract Message getMessage(JMSSenderDaemon sender) throws JMSException;
+    public abstract Message getMessage(JMSMessageSender sender) throws JMSException;
 }

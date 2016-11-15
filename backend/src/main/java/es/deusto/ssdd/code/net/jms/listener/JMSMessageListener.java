@@ -8,19 +8,18 @@ import javax.jms.*;
 /**
  * Created by .local on 08/11/2016.
  */
-public class JMSListenerDaemon implements Runnable, ExceptionListener {
+public class JMSMessageListener implements Runnable, ExceptionListener, MessageListener {
 
     private JMSMessageParser parser;
     private String connectionId;
     private String serviceName;
-    private boolean serviceEnabled;
     private Connection connection;
     private Session session;
     private Destination destination;
     private MessageConsumer consumer;
     private String trackerId;
 
-    public JMSListenerDaemon(String trackerId, String connectionId, String serviceName) {
+    public JMSMessageListener(String trackerId, String connectionId, String serviceName) {
         this.trackerId = trackerId;
         this.parser = new JMSMessageParser(trackerId, connectionId, serviceName);
         try {
@@ -32,7 +31,6 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener {
             }
             this.connectionId = connectionId;
             this.serviceName = serviceName;
-            serviceEnabled = true;
         } catch (JMSException e) {
             e.printStackTrace();
         }
@@ -40,10 +38,7 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener {
 
     public void run() {
         System.out.println("JMS Daemon listener [STARTED]");
-        while (serviceEnabled) {
-            runDaemonListener();
-        }
-        System.out.println("JMS Daemon listener [STOPPED]");
+        runDaemonListener();
     }
 
     private void runDaemonListener() {
@@ -59,6 +54,7 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener {
 
             // Create a MessageConsumer from the Session to the Queue
             consumer = createConsumer(session, destination);
+            consumer.setMessageListener(this);
 
             // Wait for a message
             readMessage(consumer);
@@ -114,13 +110,6 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener {
     private void readMessage(MessageConsumer consumer) throws JMSException {
         if (consumer != null) {
             Message message = consumer.receive(1000);
-            processReceivedMessage(message);
-        }
-    }
-
-    private void processReceivedMessage(Message message) throws JMSException {
-        if (message != null) {
-            parser.process(message);
         }
     }
 
@@ -157,29 +146,10 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener {
         System.err.println("# JMS Listener Daemon Exception occured: " + ex.getMessage());
     }
 
-    //SETTERS Y GETTERS
-
-    public String getConnectionId() {
-        return connectionId;
-    }
-
-    public void setConnectionId(String connectionId) {
-        this.connectionId = connectionId;
-    }
-
-    public String getServiceName() {
-        return serviceName;
-    }
-
-    public void setServiceName(String serviceName) {
-        this.serviceName = serviceName;
-    }
-
-    public boolean isServiceEnabled() {
-        return serviceEnabled;
-    }
-
-    public void setServiceEnabled(boolean serviceEnabled) {
-        this.serviceEnabled = serviceEnabled;
+    @Override
+    public void onMessage(Message message) {
+        if(message!=null){
+            parser.process(message);
+        }
     }
 }

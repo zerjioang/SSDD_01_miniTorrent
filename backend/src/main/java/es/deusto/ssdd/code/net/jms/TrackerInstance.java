@@ -1,8 +1,8 @@
 package es.deusto.ssdd.code.net.jms;
 
 import es.deusto.ssdd.code.net.bittorrent.core.TrackerUtil;
-import es.deusto.ssdd.code.net.jms.listener.JMSListenerDaemon;
-import es.deusto.ssdd.code.net.jms.listener.JMSSenderDaemon;
+import es.deusto.ssdd.code.net.jms.listener.JMSMessageListener;
+import es.deusto.ssdd.code.net.jms.listener.JMSMessageSender;
 import es.deusto.ssdd.code.net.jms.message.MessageCollection;
 import es.deusto.ssdd.code.net.jms.model.TrackerInstanceNodeType;
 
@@ -20,8 +20,8 @@ public class TrackerInstance {
     private final String trackerId;
     private TrackerInstanceNodeType nodeType;
 
-    private JMSListenerDaemon listener;
-    private JMSSenderDaemon sender;
+    private JMSMessageListener listener;
+    private JMSMessageSender sender;
 
     public TrackerInstance() {
         System.out.println("Running tracker instance " + (counter + 1));
@@ -32,8 +32,8 @@ public class TrackerInstance {
         System.out.println("Tracker ID: " + trackerId);
 
         //define our background services
-        listener = new JMSListenerDaemon(trackerId, ACTIVE_MQ_SERVER, REMOTE_SERVICE);
-        sender = new JMSSenderDaemon(trackerId, ACTIVE_MQ_SERVER, REMOTE_SERVICE);
+        listener = new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, REMOTE_SERVICE);
+        sender = new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, REMOTE_SERVICE);
 
         //init nodetype variable
         nodeType = null;
