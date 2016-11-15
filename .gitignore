@@ -2,6 +2,8 @@
 /.idea
 *.iml
 /backend/target
+//target//
+//out//
 
 ### Java template
 *.class

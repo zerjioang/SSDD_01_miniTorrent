@@ -1,5 +1,6 @@
 package es.deusto.ssdd.code.net.jms.message.wrapper;
 
+import es.deusto.ssdd.code.net.jms.TrackerInstance;
 import es.deusto.ssdd.code.net.jms.message.IJMSMessage;
 
 import java.io.Serializable;
@@ -18,6 +19,10 @@ public class TrackerHello implements Serializable, IJMSMessage {
     @Override
     public void onReceivedEvent() {
         System.out.println(getSourceTrackerId()+" :: Adding discovered new node to local collection");
+        TrackerInstance node = TrackerInstance.getNode(trackerId);
+        if(node!=null){
+            node.addRemoteNode(getSourceTrackerId());
+        }
     }
 
     @Override
