@@ -120,7 +120,6 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
 
     private void processReceivedMessage(Message message) throws JMSException {
         if (message != null) {
-            System.out.println("<< Tracker ID: " + trackerId);
             parseMessageContent(message);
         }
     }
@@ -164,7 +163,7 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
         try {
             if (message.getClass().equals(ActiveMQTextMessage.class)) {
                 TextMessage textMessage = (TextMessage) message;
-                System.out.println("<- " + trackerId + "Received TextMessage: " + textMessage.getText());
+                System.out.println(trackerId + " << RECEIVE << "+serviceName+"/"+connectionId +" << "+ textMessage.getText());
             } else if (message.getClass().equals(ActiveMQObjectMessage.class)) {
                 ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
                 Object o = objectMessage.getObject();
@@ -172,10 +171,9 @@ public class JMSListenerDaemon implements Runnable, ExceptionListener, TrackerMe
                 if (o.getClass().equals(TrackerHello.class)) {
                     TrackerHello th = (TrackerHello) o;
                     if (th.isMine(trackerId)) {
-                        System.out.println("\t Drop message");
+                        System.out.println(trackerId + " << DROP << "+serviceName+"/"+connectionId +" << "+ th.toString());
                     } else {
-                        System.out.println("\t Handshake message detected from instance " + th.getTrackerId());
-
+                        System.out.println(trackerId + " << RECEIVED << "+serviceName+"/"+connectionId +" << "+ th.toString());
                     }
                 }
             } else {

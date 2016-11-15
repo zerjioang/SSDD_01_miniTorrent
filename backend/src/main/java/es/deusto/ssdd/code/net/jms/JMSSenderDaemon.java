@@ -113,7 +113,7 @@ public class JMSSenderDaemon implements Runnable {
         if (message == null) {
             throw new JMSException("There is no valid message to send");
         }
-        System.out.println(">> Tracker ID: " + trackerId + " sending message " + message.toString());
+        System.out.println(trackerId + " >> SEND >> "+serviceName+"/"+connectionId +" >> "+ message.toString());
         producer.send(message);
     }
 

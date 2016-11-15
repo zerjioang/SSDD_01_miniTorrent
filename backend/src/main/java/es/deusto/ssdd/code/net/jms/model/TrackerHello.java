@@ -20,4 +20,11 @@ public class TrackerHello implements Serializable {
     public boolean isMine(String trackerId) {
         return this.trackerId.equals(trackerId);
     }
+
+    @Override
+    public String toString() {
+        return "TrackerHello{" +
+                "trackerId='" + trackerId + '\'' +
+                '}';
+    }
 }
