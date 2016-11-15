@@ -1,7 +1,9 @@
 package es.deusto.ssdd.code.net.jms.listener;
 
+import es.deusto.ssdd.code.net.jms.message.IJMSMessage;
 import es.deusto.ssdd.code.net.jms.message.MessageCollection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.command.ActiveMQObjectMessage;
 
 import javax.jms.*;
 import java.util.ArrayList;
@@ -36,7 +38,7 @@ public class JMSMessageSender implements Runnable {
     }
 
     public void run() {
-        System.out.println("JMS Daemon sender [STARTED]");
+        System.out.println(trackerId+" JMS Daemon sender [STARTED]");
         try {
             // Create a Connection
             connection = createConnection(connectionId);
@@ -53,10 +55,11 @@ public class JMSMessageSender implements Runnable {
             while (keepAlive) {
                 if (!messagesToSend.isEmpty()) {
                     //get the first message on the queue and send it
-                    Message message = messagesToSend.remove(0).getMessage(this);
+                    MessageCollection jmsMessage = messagesToSend.remove(0);
+                    ActiveMQObjectMessage message = (ActiveMQObjectMessage) jmsMessage.getMessage(this);
                     this.sendMessage(producer, message);
+                    this.triggerMessageSendAction(message);
                 }
-
                 Thread.sleep(50);
             }
 
@@ -65,6 +68,21 @@ public class JMSMessageSender implements Runnable {
             System.out.println("JMS Daemon sender [STOPPED]");
         } catch (Exception ex) {
             System.err.println("# JMSMessageSender error: " + ex.getMessage());
+        }
+    }
+
+    private void triggerMessageSendAction(ActiveMQObjectMessage message) {
+        if(message!=null){
+            try {
+                Object o = message.getObject();
+                if(o!=null){
+                    IJMSMessage m = (IJMSMessage) o;
+                    System.out.println(trackerId + " >> SEND >> "+serviceName+"/"+connectionId +" >> "+ m.getPrintable());
+                    m.onBroadcastEvent();
+                }
+            } catch (JMSException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -117,7 +135,6 @@ public class JMSMessageSender implements Runnable {
         if (message == null) {
             throw new JMSException("There is no valid message to send");
         }
-        System.out.println(trackerId + " >> SEND >> "+serviceName+"/"+connectionId +" >> "+ message.toString());
         producer.send(message);
     }
 

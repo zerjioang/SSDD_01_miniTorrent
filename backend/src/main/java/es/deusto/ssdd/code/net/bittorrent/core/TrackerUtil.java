@@ -11,7 +11,6 @@ import java.net.UnknownHostException;
 public class TrackerUtil {
 
     private static final String NO_MAC_ADDRESS_FOUND = "no:id:fo:un:dd:00";
-    private static String trackerId = null;
     private static String OS = System.getProperty("os.name").toLowerCase();
 
     public static final String getDeviceMacAddress() {
@@ -33,23 +32,11 @@ public class TrackerUtil {
             }
             return sb.toString();
         } catch (UnknownHostException | SocketException | NullPointerException e) {
-            e.printStackTrace();
         }
         return NO_MAC_ADDRESS_FOUND;
     }
 
     public static boolean isMac() {
-
-        return (OS.indexOf("mac") >= 0);
-
+        return (OS.contains("mac"));
     }
-
-    /*
-    public static final String getTrackerId() {
-        if (trackerId == null) {
-            trackerId = getDeviceMacAddress() + ":" + System.nanoTime();
-        }
-        return trackerId;
-    }
-    */
 }

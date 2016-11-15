@@ -5,7 +5,7 @@ package es.deusto.ssdd.code.net.jms.message;
  */
 public interface IJMSMessage {
 
-    void onReceivedEvent();
+    void onReceivedEvent(String destinationNodeId);
 
     void onBroadcastEvent();
 

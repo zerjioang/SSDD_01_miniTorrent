@@ -17,9 +17,8 @@ public class TrackerHello implements Serializable, IJMSMessage {
     }
 
     @Override
-    public void onReceivedEvent() {
-        System.out.println(getSourceTrackerId()+" :: Adding discovered new node to local collection");
-        TrackerInstance node = TrackerInstance.getNode(trackerId);
+    public void onReceivedEvent(String destinationNodeId) {
+        TrackerInstance node = TrackerInstance.getNode(destinationNodeId);
         if(node!=null){
             node.addRemoteNode(getSourceTrackerId());
         }
@@ -27,7 +26,7 @@ public class TrackerHello implements Serializable, IJMSMessage {
 
     @Override
     public void onBroadcastEvent() {
-        System.out.println("Tracker hello message broadcast event here");
+        System.out.println(trackerId+" Tracker hello message broadcast event here");
     }
 
     @Override

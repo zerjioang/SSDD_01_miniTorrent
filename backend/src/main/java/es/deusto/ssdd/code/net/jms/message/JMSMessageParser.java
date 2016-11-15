@@ -20,7 +20,7 @@ public class JMSMessageParser {
         this.serviceName = serviceName;
     }
 
-    public void process(Message message) {
+    public void process(String destinationNodeId, Message message) {
         try {
             if (message.getClass().equals(ActiveMQObjectMessage.class)) {
                 ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
@@ -35,7 +35,7 @@ public class JMSMessageParser {
                         //log communication
                         System.out.println(trackerId + " << RECEIVED << "+serviceName+"/"+connectionId +" << "+ receivedMessage.getPrintable());
                         //trigger action
-                        receivedMessage.onReceivedEvent();
+                        receivedMessage.onReceivedEvent(destinationNodeId);
                     }
                 }
             } else {
