@@ -1,6 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
 /.idea
 *.iml
+/backend/target
 
 ### Java template
 *.class
