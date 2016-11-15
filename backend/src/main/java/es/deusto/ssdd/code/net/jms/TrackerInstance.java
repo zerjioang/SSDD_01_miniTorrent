@@ -7,6 +7,7 @@ import es.deusto.ssdd.code.net.jms.message.MessageCollection;
 import es.deusto.ssdd.code.net.jms.model.TrackerInstanceNodeType;
 
 import javax.jms.JMSException;
+import java.util.HashMap;
 
 /**
  * Created by .local on 14/11/2016.
@@ -23,13 +24,17 @@ public class TrackerInstance {
     private JMSMessageListener listener;
     private JMSMessageSender sender;
 
+    private static final HashMap<String, TrackerInstance> map = new HashMap<>();
+
     public TrackerInstance() {
         System.out.println("Running tracker instance " + (counter + 1));
         counter++;
 
         trackerId = TrackerUtil.getDeviceMacAddress() + ":" + System.nanoTime();
-
         System.out.println("Tracker ID: " + trackerId);
+
+        //add to instance map. only for development with multinodes in local mode
+        TrackerInstance.map.put(trackerId, this);
 
         //define our background services
         listener = new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, REMOTE_SERVICE);
@@ -65,5 +70,13 @@ public class TrackerInstance {
 
     public void setNodeType(TrackerInstanceNodeType nodeType) {
         this.nodeType = nodeType;
+    }
+
+    public static TrackerInstance getNode(String id) {
+        return TrackerInstance.map.get(id);
+    }
+
+    public void addRemoteNode(String sourceTrackerId) {
+        System.out.println("Adding remote node "+sourceTrackerId+" to active trackers list");
     }
 }

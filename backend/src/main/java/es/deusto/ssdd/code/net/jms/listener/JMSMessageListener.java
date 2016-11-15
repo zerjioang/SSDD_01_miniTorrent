@@ -56,8 +56,8 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
             consumer = createConsumer(session, destination);
             consumer.setMessageListener(this);
 
-            // Wait for a message
-            readMessage(consumer);
+            //listen for async messages
+            consumer.receive();
 
             closeListener(connection, session, consumer);
         } catch (Exception ex) {
@@ -105,12 +105,6 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
         if (session != null && destination != null)
             return session.createConsumer(destination);
         throw new JMSException("No session or destination defined when attempting to create a consumer");
-    }
-
-    private void readMessage(MessageConsumer consumer) throws JMSException {
-        if (consumer != null) {
-            Message message = consumer.receive(1000);
-        }
     }
 
     private Destination createDestinationQueue(Session session) throws JMSException {
