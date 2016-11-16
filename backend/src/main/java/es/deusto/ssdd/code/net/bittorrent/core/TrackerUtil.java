@@ -13,7 +13,7 @@ public class TrackerUtil {
     private static final String NO_MAC_ADDRESS_FOUND = "no:id:fo:un:dd:00";
     private static String OS = System.getProperty("os.name").toLowerCase();
 
-    public static final String getDeviceMacAddress() {
+    public static String getDeviceMacAddress() {
         InetAddress ip;
         try {
             NetworkInterface network = null;

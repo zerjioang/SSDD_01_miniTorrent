@@ -8,11 +8,11 @@ import java.io.Serializable;
 /**
  * Created by .local on 14/11/2016.
  */
-public class TrackerHello implements Serializable, IJMSMessage {
+public class HelloMessage implements Serializable, IJMSMessage {
 
     private final String trackerId;
 
-    public TrackerHello(String trackerId) {
+    public HelloMessage(String trackerId) {
         this.trackerId = trackerId;
     }
 
@@ -26,7 +26,6 @@ public class TrackerHello implements Serializable, IJMSMessage {
 
     @Override
     public void onBroadcastEvent() {
-        System.out.println(trackerId+" Tracker hello message broadcast event here");
     }
 
     @Override

@@ -1,6 +1,7 @@
 package es.deusto.ssdd.code.net.jms;
 
 import es.deusto.ssdd.code.net.bittorrent.core.TrackerUtil;
+import es.deusto.ssdd.code.net.gui.view.InterfaceRefresher;
 import es.deusto.ssdd.code.net.gui.view.TrackerWindow;
 import es.deusto.ssdd.code.net.jms.listener.JMSMessageListener;
 import es.deusto.ssdd.code.net.jms.listener.JMSMessageSender;
@@ -23,7 +24,8 @@ public class TrackerInstance implements Comparable{
     private static final String ACTIVE_MQ_SERVER = "tcp://localhost:61616";
 
     private static final int THIS_IS_OLDER = 1;
-    private static final int TIMESTAMP_VALUE = 6;
+    private static final int TIMESTAMP_VALUE = 1;
+    private static final String ID_SEPARATOR_TAG = ">";
     private static int counter = 0;
 
     private static final HashMap<String, TrackerInstance> map = new HashMap<>();
@@ -48,15 +50,16 @@ public class TrackerInstance implements Comparable{
     private String ip;
     private int port;
     private TrackerStatus trackerStatus;
+    private InterfaceRefresher refresh;
 
     public TrackerInstance() {
 
-        this. trackerStatus = TrackerStatus.OFFLINE;
+        this.trackerStatus = TrackerStatus.OFFLINE;
 
         System.out.println("Running tracker instance " + (counter + 1));
         counter++;
 
-        trackerId = TrackerUtil.getDeviceMacAddress() + ":" + System.nanoTime();
+        trackerId = TrackerUtil.getDeviceMacAddress() + ID_SEPARATOR_TAG + System.nanoTime();
         ip = TrackerUtil.getIP();
         port = 8000;
         System.out.println("Tracker ID: " + trackerId);
@@ -75,15 +78,21 @@ public class TrackerInstance implements Comparable{
         //init master node
         masterNode = null;
 
+        //deploy our background services
+        deployServices();
+
+        //show tracker window
+        showTrackerWindow();
+
         beginMasterElectionProcess();
 
-        //deploy our background services
-        //thread(listener, false);
-        //thread(sender, false);
+        this.trackerStatus = TrackerStatus.ONLINE;
+        this.refresh.updateTrackerStatus(this.trackerStatus);
+    }
 
-        this. trackerStatus = TrackerStatus.ONLINE;
-
-        showTrackerWindow();
+    private void deployServices() {
+        thread(getSender(HANDSHAKE_SERVICE), false);
+        thread(getListener(HANDSHAKE_SERVICE), false);
     }
 
     private void setupDaemons() {
@@ -121,11 +130,9 @@ public class TrackerInstance implements Comparable{
     }
 
     private void showTrackerWindow() {
-        new Thread(() -> {
-            //show this tracker related window
-            trackerWindow = new TrackerWindow(getCurrentTrackerInstance());
-            trackerWindow.setVisible(true);
-        }).start();
+        trackerWindow = new TrackerWindow(getCurrentTrackerInstance());
+        trackerWindow.setVisible(true);
+        this.refresh = trackerWindow;
     }
 
     private TrackerInstance getCurrentTrackerInstance() {
@@ -136,7 +143,7 @@ public class TrackerInstance implements Comparable{
         if(masterNode==null){
             System.out.println(trackerId + " Master election process begin");
             if(trackerNodeList.size()==1){
-                System.out.println(trackerId + " setting as MASTER");
+                System.out.println(trackerId + " setting as local MASTER");
                 nodeType = TrackerInstanceNodeType.MASTER;
             }
             else{
@@ -146,20 +153,19 @@ public class TrackerInstance implements Comparable{
                     olderIdInstance = this.getOlderTrackerNode(olderIdInstance, instance);
                 }
                 this.masterNode = olderIdInstance;
-
                 _debug_election_result();
             }
         }
         else{
             System.out.println(trackerId + " Master node ("+masterNode.getTrackerId()+") already known. Election process [ABORT]");
         }
+        this.refresh.updateNodeType(nodeType);
     }
 
     private void _debug_election_result() {
         for(TrackerInstance instance : trackerNodeList){
             System.out.println("\tDEBUG: "+this.trackerId+" knows that "+instance.trackerId+" is now "+instance.getNodeType());
         }
-
         System.out.println(trackerId+" Cluster MASTER node is: "+masterNode.getTrackerId());
     }
 
@@ -217,13 +223,26 @@ public class TrackerInstance implements Comparable{
     }
 
     public void addRemoteNode(String sourceTrackerId) {
-        System.out.println("Adding remote node "+sourceTrackerId+" to active trackers list");
+        System.out.println(trackerId+" Adding remote node "+sourceTrackerId+" to active trackers list");
         TrackerInstance node = TrackerInstance.getNode(sourceTrackerId);
         if(node!=null){
             //añadir a la lista de nodos
             this.trackerNodeList.add(node);
             //como se ha añadido un nodo, evaluar otra vez la eleccion del master
             this.beginMasterElectionProcess();
+        }
+    }
+
+    public void removeRemoteNode(String sourceTrackerId) {
+        System.out.println(trackerId+" Removing remote node "+sourceTrackerId+"from active trackers list");
+        TrackerInstance node = TrackerInstance.getNode(sourceTrackerId);
+        if(node!=null){
+            //eliminar de la lista
+            boolean removed = this.trackerNodeList.remove(node);
+            if(node.isMaster()){
+                System.out.println(trackerId+" Master is gone");
+                this.beginMasterElectionProcess();
+            }
         }
     }
 
@@ -237,7 +256,7 @@ public class TrackerInstance implements Comparable{
     }
 
     private String getTrackerTimeStamp() {
-        String[] data = getTrackerId().split(":");
+        String[] data = getTrackerId().split(ID_SEPARATOR_TAG);
         return data[TIMESTAMP_VALUE];
     }
 
@@ -263,5 +282,18 @@ public class TrackerInstance implements Comparable{
 
     public void setTrackerStatus(TrackerStatus trackerStatus) {
         this.trackerStatus = trackerStatus;
+    }
+
+    public boolean isMaster() {
+        return nodeType == TrackerInstanceNodeType.MASTER;
+    }
+
+    public void stopNode() {
+        try {
+            this.getSender(TrackerDaemonSpec.HANDSHAKE_SERVICE).send(MessageCollection.BYE_BYE);
+            this.setTrackerStatus(TrackerStatus.OFFLINE);
+        } catch (JMSException e) {
+            e.printStackTrace();
+        }
     }
 }

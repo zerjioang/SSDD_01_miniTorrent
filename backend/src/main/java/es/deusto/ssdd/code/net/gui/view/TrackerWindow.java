@@ -1,13 +1,15 @@
 package es.deusto.ssdd.code.net.gui.view;
 
 import es.deusto.ssdd.code.net.jms.TrackerInstance;
+import es.deusto.ssdd.code.net.jms.model.TrackerInstanceNodeType;
+import es.deusto.ssdd.code.net.jms.model.TrackerStatus;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
-public class TrackerWindow extends JFrame {
+public class TrackerWindow extends JFrame implements InterfaceRefresher {
 
     private final TrackerInstance instance;
     private final JLabel labelTrackerIp;
@@ -140,25 +142,25 @@ public class TrackerWindow extends JFrame {
         menuBar.add(mnFile);
 
         JMenuItem mntmExit = new JMenuItem("Exit");
-        mntmExit.addActionListener(TrackerGUIEvents.MENU_EXIT::event);
+        mntmExit.addActionListener(TrackerGUIEvents.MENU_EXIT.event(this));
         mnFile.add(mntmExit);
 
         JMenu mnSettings = new JMenu("Settings");
         menuBar.add(mnSettings);
 
         JMenuItem mntmConfigurarTracker = new JMenuItem("Tracker settings");
-        mntmConfigurarTracker.addActionListener(TrackerGUIEvents.MENU_CONFIGURE_TRACKER::event);
+        mntmConfigurarTracker.addActionListener(TrackerGUIEvents.MENU_CONFIGURE_TRACKER.event(this));
         mnSettings.add(mntmConfigurarTracker);
 
         JMenuItem mntmForceStop = new JMenuItem("Force stop");
-        mntmForceStop.addActionListener(TrackerGUIEvents.MENU_FORCE_STOP::event);
+        mntmForceStop.addActionListener(TrackerGUIEvents.MENU_FORCE_STOP.event(this));
         mnSettings.add(mntmForceStop);
 
         JMenu mnHelp = new JMenu("Help");
         menuBar.add(mnHelp);
 
         JMenuItem mntmAbout = new JMenuItem("About");
-        mntmAbout.addActionListener(TrackerGUIEvents.MENU_ABOUT::event);
+        mntmAbout.addActionListener(TrackerGUIEvents.MENU_ABOUT.event(this));
         mnHelp.add(mntmAbout);
         JPanel contentPane = new JPanel();
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -169,11 +171,11 @@ public class TrackerWindow extends JFrame {
 
     private void populateWindow() {
         if(instance!=null){
-            setTitle("Tracker Node :: "+instance.getNodeType());
+            updateTrackerStatus(instance.getTrackerStatus());
             labelTrackerIp.setText(instance.getIp());
             labelTrackerPort.setText(""+instance.getPort());
             labelTrackerId.setText(instance.getTrackerId());
-            labelTrackerOnline.setText(""+instance.getTrackerStatus());
+            updateTrackerStatus(instance.getTrackerStatus());
         }
     }
 
@@ -200,4 +202,19 @@ public class TrackerWindow extends JFrame {
         }
     }
 
+    public TrackerInstance getInstance() {
+        return instance;
+    }
+
+    public void updateTrackerStatus(TrackerStatus status) {
+        if(status!=null){
+            this.labelTrackerOnline.setText(""+status);
+            this.labelTrackerOnline.setForeground(status.getColor());
+        }
+    }
+
+    @Override
+    public void updateNodeType(TrackerInstanceNodeType nodeType) {
+        this.setTitle("Tracker Node :: "+instance.getNodeType());
+    }
 }

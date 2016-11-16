@@ -21,16 +21,13 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
 
     public JMSMessageListener(String trackerId, String connectionId, TrackerDaemonSpec trackerDaemonSpec) {
         this.trackerId = trackerId;
+        this.serviceName = trackerDaemonSpec.getServiceName();
         this.parser = new JMSMessageParser(trackerId, connectionId, serviceName);
         try {
-            if (trackerDaemonSpec == null) {
-                throw new JMSException("There is no tracker spec defined before setting up JMS Listener");
-            }
             if (connectionId == null) {
                 throw new JMSException("There is JMS service ID  defined before setting up JMS Listener");
             }
             this.connectionId = connectionId;
-            this.serviceName = trackerDaemonSpec.getServiceName();
         } catch (JMSException e) {
             e.printStackTrace();
         }
@@ -54,18 +51,20 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
 
             // Create a MessageConsumer from the Session to the Queue
             consumer = createConsumer(session, destination);
-            consumer.setMessageListener(this);
 
             //listen for async messages
-            consumer.receive();
+            consumer.setMessageListener(this);
 
-            closeListener(connection, session, consumer);
+            //start connection
+            connection.setExceptionListener(this);
+            connection.start();
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
-    private void closeListener(Connection connection, Session session, MessageConsumer consumer) {
+    public void closeListener(Connection connection, Session session, MessageConsumer consumer) {
         closeConsumer(consumer);
         closeSession(session);
         closeConnection(connection);
@@ -123,12 +122,9 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     private Connection createConnection() throws JMSException {
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(connectionId);
         Connection connection = connectionFactory.createConnection();
-        if (connection != null) {
-            connection.start();
-            connection.setExceptionListener(this);
-            return connection;
-        }
-        throw new JMSException("No connection created when attempting to create a stable Connection");
+        if(connection==null)
+            throw new JMSException("No connection created when attempting to create a stable Connection");
+        return connection;
     }
 
     public synchronized void onException(JMSException ex) {

@@ -29,11 +29,11 @@ public class JMSMessageParser {
                     IJMSMessage receivedMessage = (IJMSMessage) o;
                     if(isReceivedMessageMine(receivedMessage)){
                         //drop message
-                        System.out.println(trackerId + " << DROP << "+serviceName+"/"+connectionId +" << "+ receivedMessage.getPrintable());
+                        System.out.println(trackerId + " << DROP << "+connectionId + "/"+ serviceName +" << "+ receivedMessage.getPrintable());
                     }
                     else{
                         //log communication
-                        System.out.println(trackerId + " << RECEIVED << "+serviceName+"/"+connectionId +" << "+ receivedMessage.getPrintable());
+                        System.out.println(trackerId + " << RECEIVED << "+connectionId + "/" + serviceName +" << "+ receivedMessage.getPrintable());
                         //trigger action
                         receivedMessage.onReceivedEvent(destinationNodeId);
                     }

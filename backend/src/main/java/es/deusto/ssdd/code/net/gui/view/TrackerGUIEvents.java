@@ -1,6 +1,12 @@
 package es.deusto.ssdd.code.net.gui.view;
 
-import java.awt.event.ActionEvent;
+import es.deusto.ssdd.code.net.jms.TrackerInstance;
+import es.deusto.ssdd.code.net.jms.model.TrackerStatus;
+
+import javax.swing.*;
+import java.awt.event.ActionListener;
+
+import static javax.swing.JOptionPane.showConfirmDialog;
 
 /**
  * Created by .local
@@ -8,25 +14,51 @@ import java.awt.event.ActionEvent;
 public enum TrackerGUIEvents {
     MENU_CONFIGURE_TRACKER {
         @Override
-        public void event(ActionEvent event) {
-            System.out.println(event.toString() + "Configure tracker event detected");
+        public ActionListener event(TrackerWindow window) {
+            return actionEvent -> {
+                System.out.println("Configure tracker event detected");
+            };
         }
     }, MENU_ABOUT {
         @Override
-        public void event(ActionEvent event) {
-            System.out.println("menu about event detected");
+        public ActionListener event(TrackerWindow window) {
+            return actionEvent -> {
+                System.out.println("menu about event detected");
+            };
         }
     }, MENU_EXIT {
         @Override
-        public void event(ActionEvent event) {
-            System.out.println("Menu exit event detected");
+        public ActionListener event(TrackerWindow window) {
+            return actionEvent -> {
+                System.out.println("Menu exit event detected");
+            };
         }
     }, MENU_FORCE_STOP {
         @Override
-        public void event(ActionEvent event) {
-            System.out.println("Menu force stop event detected");
+        public ActionListener event(TrackerWindow window) {
+            return actionEvent -> {
+                System.out.println("Menu force stop event detected");
+                TrackerInstance instance = window.getInstance();
+                if(instance!=null){
+                    if(instance.isMaster()){
+                        int result = JOptionPane.showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker Master?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
+                        executeOnResult(window, result);
+                    }
+                    else{
+                        int result = showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker Master?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
+                        executeOnResult(window, result);
+                    }
+                }
+            };
+        }
+
+        private void executeOnResult(TrackerWindow window, int result) {
+            if(result == JOptionPane.OK_OPTION){
+                window.getInstance().stopNode();
+                window.updateTrackerStatus(TrackerStatus.OFFLINE);
+            }
         }
     };
 
-    public abstract void event(ActionEvent event);
+    public abstract ActionListener event(TrackerWindow window);
 }

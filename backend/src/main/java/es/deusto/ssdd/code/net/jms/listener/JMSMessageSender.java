@@ -77,7 +77,7 @@ public class JMSMessageSender implements Runnable {
                 Object o = message.getObject();
                 if(o!=null){
                     IJMSMessage m = (IJMSMessage) o;
-                    System.out.println(trackerId + " >> SEND >> "+serviceName+"/"+connectionId +" >> "+ m.getPrintable());
+                    System.out.println(trackerId + " >> SEND >> "+connectionId + "/" +serviceName+" >> "+ m.getPrintable());
                     m.onBroadcastEvent();
                 }
             } catch (JMSException e) {
@@ -119,15 +119,6 @@ public class JMSMessageSender implements Runnable {
         return producer;
     }
 
-    private TextMessage createMessage(Session session, String text) throws JMSException {
-        if (session == null)
-            throw new JMSException("There is no valid session to use for message creation");
-        if (text == null) {
-            throw new JMSException("There is no valid text to create a message");
-        }
-        return session.createTextMessage(text);
-    }
-
     private void sendMessage(MessageProducer producer, Message message) throws JMSException {
         // Tell the producer to send the message
         if (producer == null)
@@ -150,6 +141,7 @@ public class JMSMessageSender implements Runnable {
     public boolean send(MessageCollection message) throws JMSException {
         if (message != null) {
             this.messagesToSend.add(message);
+            return true;
         }
         return false;
     }
