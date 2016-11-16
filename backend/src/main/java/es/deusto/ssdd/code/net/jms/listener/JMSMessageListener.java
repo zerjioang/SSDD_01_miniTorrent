@@ -19,18 +19,18 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     private MessageConsumer consumer;
     private String trackerId;
 
-    public JMSMessageListener(String trackerId, String connectionId, String serviceName) {
+    public JMSMessageListener(String trackerId, String connectionId, TrackerDaemonSpec trackerDaemonSpec) {
         this.trackerId = trackerId;
         this.parser = new JMSMessageParser(trackerId, connectionId, serviceName);
         try {
-            if (serviceName == null) {
-                throw new JMSException("There is no service name defined before setting up JMS Listener");
+            if (trackerDaemonSpec == null) {
+                throw new JMSException("There is no tracker spec defined before setting up JMS Listener");
             }
             if (connectionId == null) {
                 throw new JMSException("There is JMS service ID  defined before setting up JMS Listener");
             }
             this.connectionId = connectionId;
-            this.serviceName = serviceName;
+            this.serviceName = trackerDaemonSpec.getServiceName();
         } catch (JMSException e) {
             e.printStackTrace();
         }

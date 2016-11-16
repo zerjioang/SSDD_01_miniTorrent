@@ -21,14 +21,14 @@ public class JMSMessageSender implements Runnable {
     private boolean keepAlive;
     private ArrayList<MessageCollection> messagesToSend;
 
-    public JMSMessageSender(String trackerId, String connectionId, String serviceName) {
+    public JMSMessageSender(String trackerId, String connectionId, TrackerDaemonSpec trackerSpecs) {
         this.trackerId = trackerId;
         try {
-            if (serviceName == null)
-                throw new JMSException("A service name is needed for JMS Message sender creation");
+            if (trackerSpecs == null)
+                throw new JMSException("A tracker service spec is needed for JMS Message sender creation");
             if (connectionId == null)
                 throw new JMSException("A server connection ID is needed for JMS Message sender creation");
-            this.serviceName = serviceName;
+            this.serviceName = trackerSpecs.getServiceName();
             this.connectionId = connectionId;
             this.keepAlive = true;
             this.messagesToSend = new ArrayList<>();

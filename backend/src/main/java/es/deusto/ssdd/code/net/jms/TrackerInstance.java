@@ -1,8 +1,10 @@
 package es.deusto.ssdd.code.net.jms;
 
 import es.deusto.ssdd.code.net.bittorrent.core.TrackerUtil;
+import es.deusto.ssdd.code.net.gui.view.TrackerWindow;
 import es.deusto.ssdd.code.net.jms.listener.JMSMessageListener;
 import es.deusto.ssdd.code.net.jms.listener.JMSMessageSender;
+import es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec;
 import es.deusto.ssdd.code.net.jms.message.MessageCollection;
 import es.deusto.ssdd.code.net.jms.model.TrackerInstanceNodeType;
 
@@ -10,18 +12,31 @@ import javax.jms.JMSException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.DATA_SYNC_SERVICE;
+import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.HANDSHAKE_SERVICE;
+import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.KEEP_ALIVE_SERVICE;
+
 /**
  * Created by .local on 14/11/2016.
  */
 public class TrackerInstance implements Comparable{
 
     private static final String ACTIVE_MQ_SERVER = "tcp://localhost:61616";
-    private static final String REMOTE_SERVICE = "tracker.handshake";
+
     private static final int THIS_IS_OLDER = 1;
     private static final int TIMESTAMP_VALUE = 6;
     private static int counter = 0;
 
+    private static final HashMap<String, TrackerInstance> map = new HashMap<>();
+
+    //listener map
+    private final HashMap<TrackerDaemonSpec, JMSMessageListener> listenerHashMap;
+
+    //sender map
+    private final HashMap<TrackerDaemonSpec, JMSMessageSender> senderHashMap;
+
     private final String trackerId;
+
     private TrackerInstanceNodeType nodeType;
 
     //master node
@@ -30,10 +45,7 @@ public class TrackerInstance implements Comparable{
     //tracker node list
     private final ArrayList<TrackerInstance> trackerNodeList;
 
-    private JMSMessageListener listener;
-    private JMSMessageSender sender;
-
-    private static final HashMap<String, TrackerInstance> map = new HashMap<>();
+    private TrackerWindow trackerWindow;
 
     public TrackerInstance() {
         System.out.println("Running tracker instance " + (counter + 1));
@@ -45,12 +57,33 @@ public class TrackerInstance implements Comparable{
         //add to instance map. only for development with multinodes in local mode
         TrackerInstance.map.put(trackerId, this);
 
-        //define our background services
-        listener = new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, REMOTE_SERVICE);
-        sender = new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, REMOTE_SERVICE);
-
         //init tracker node list
         trackerNodeList = new ArrayList<>();
+
+        //init maps
+        senderHashMap = new HashMap<>();
+        listenerHashMap = new HashMap<>();
+
+        //populate maps
+        senderHashMap.put(HANDSHAKE_SERVICE,
+                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
+        );
+        senderHashMap.put(KEEP_ALIVE_SERVICE,
+                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
+        );
+        senderHashMap.put(DATA_SYNC_SERVICE,
+                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
+        );
+
+        listenerHashMap.put(HANDSHAKE_SERVICE,
+                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
+        );
+        listenerHashMap.put(KEEP_ALIVE_SERVICE,
+                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
+        );
+        listenerHashMap.put(DATA_SYNC_SERVICE,
+                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
+        );
 
         //add itself to tracker node list
         trackerNodeList.add(this);
@@ -60,9 +93,23 @@ public class TrackerInstance implements Comparable{
 
         beginMasterElectionProcess();
 
-        //sayHelloToTrackerNodesCluster our background services
-        thread(listener, false);
-        thread(sender, false);
+        //deploy our background services
+        //thread(listener, false);
+        //thread(sender, false);
+
+        showTrackerWindow();
+    }
+
+    private void showTrackerWindow() {
+        new Thread(() -> {
+            //show this tracker related window
+            trackerWindow = new TrackerWindow(getCurrentTrackerInstance());
+            trackerWindow.setVisible(true);
+        }).start();
+    }
+
+    private TrackerInstance getCurrentTrackerInstance() {
+        return this;
     }
 
     private void beginMasterElectionProcess() {
@@ -119,10 +166,18 @@ public class TrackerInstance implements Comparable{
         brokerThread.start();
     }
 
-    public void sayHelloToTrackerNodesCluster() throws JMSException {
+    public void deploy() throws JMSException {
         //send first hello world message for tracker master detection
         MessageCollection message = MessageCollection.HELLO_WORLD;
-        sender.send(message);
+        getSender(HANDSHAKE_SERVICE).send(message);
+    }
+
+    public JMSMessageSender getSender(TrackerDaemonSpec spec) {
+        return senderHashMap.get(spec);
+    }
+
+    public JMSMessageListener getListener(TrackerDaemonSpec spec) {
+        return listenerHashMap.get(spec);
     }
 
     public String getTrackerId() {
