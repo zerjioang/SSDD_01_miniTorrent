@@ -139,6 +139,20 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         addWindowFocusListener(this);
     }
 
+    /**
+     * Launch the application.
+     */
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                TrackerWindow frame = new TrackerWindow(null);
+                frame.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     private JPanel createTopBar() {
         JMenuBar menuBar = new JMenuBar();
         setJMenuBar(menuBar);
@@ -175,27 +189,13 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
     }
 
     private void populateWindow() {
-        if(instance!=null){
+        if (instance != null) {
             updateTrackerStatus(instance.getTrackerStatus());
             labelTrackerIp.setText(instance.getIp());
-            labelTrackerPort.setText(""+instance.getPort());
+            labelTrackerPort.setText("" + instance.getPort());
             labelTrackerId.setText(instance.getTrackerId());
             updateTrackerStatus(instance.getTrackerStatus());
         }
-    }
-
-    /**
-     * Launch the application.
-     */
-    public static void main(String[] args) {
-        EventQueue.invokeLater(() -> {
-            try {
-                TrackerWindow frame = new TrackerWindow(null);
-                frame.setVisible(true);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
     }
 
     private void setSystemTheme() {
@@ -211,21 +211,21 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         return instance;
     }
 
-    public void updateWindowView(){
+    public void updateWindowView() {
         this.updateTrackerStatus(instance.getTrackerStatus());
         this.updateNodeType(instance.getNodeType());
     }
 
     public void updateTrackerStatus(TrackerStatus status) {
-        if(status!=null){
-            this.labelTrackerOnline.setText(""+status);
+        if (status != null) {
+            this.labelTrackerOnline.setText("" + status);
             this.labelTrackerOnline.setForeground(status.getColor());
         }
     }
 
     @Override
     public void updateNodeType(TrackerInstanceNodeType nodeType) {
-        this.setTitle("Tracker Node :: "+instance.getNodeType());
+        this.setTitle("Tracker Node :: " + instance.getNodeType());
     }
 
     @Override

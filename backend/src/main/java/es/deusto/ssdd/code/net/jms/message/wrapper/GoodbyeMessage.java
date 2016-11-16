@@ -17,16 +17,21 @@ public class GoodbyeMessage implements Serializable, IJMSMessage {
     }
 
     @Override
-    public void onReceivedEvent(String destinationNodeId) {
-        TrackerInstance node = TrackerInstance.getNode(destinationNodeId);
-        if(node!=null){
-            node.removeRemoteNode(getSourceTrackerId());
+    public void onReceivedEvent(String myLocalId) {
+        TrackerInstance thisNode = TrackerInstance.getNode(myLocalId);
+        TrackerInstance remoteNode = TrackerInstance.getNode(trackerId);
+        if (thisNode != null) {
+            thisNode.removeRemoteNode(trackerId);
+            if (remoteNode.isMaster()) {
+                System.out.println(myLocalId + " MASTER is gone. Election time!!");
+                thisNode.beginMasterElectionProcess();
+            }
         }
     }
 
     @Override
     public void onBroadcastEvent() {
-        System.out.println(trackerId+" Tracker goodbye message broadcast event here");
+        System.out.println(trackerId + " Tracker goodbye message broadcast event here");
     }
 
     @Override
@@ -36,6 +41,6 @@ public class GoodbyeMessage implements Serializable, IJMSMessage {
 
     @Override
     public String getPrintable() {
-        return "GOOD BYE from "+this.getSourceTrackerId();
+        return "GOOD BYE from " + this.getSourceTrackerId();
     }
 }

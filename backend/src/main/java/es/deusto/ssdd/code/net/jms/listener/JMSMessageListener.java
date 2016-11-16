@@ -33,7 +33,7 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     public void run() {
-        System.out.println(trackerId+" JMS Daemon listener [STARTED]");
+        System.out.println(trackerId + " JMS Daemon listener [STARTED]");
         runDaemonListener();
     }
 
@@ -106,13 +106,13 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     private Destination createDestinationQueue(Session session) throws JMSException {
-        if(session==null)
+        if (session == null)
             throw new JMSException("No session defined when attempting to create a queue");
         return session.createQueue(serviceName);
     }
 
     private Destination createDestinationTopic(Session session) throws JMSException {
-        if(session==null)
+        if (session == null)
             throw new JMSException("No session defined when attempting to create a topic");
         return session.createTopic(serviceName);
     }
@@ -126,7 +126,7 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     private Connection createConnection() throws JMSException {
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(connectionId);
         Connection connection = connectionFactory.createConnection();
-        if(connection==null)
+        if (connection == null)
             throw new JMSException("No connection created when attempting to create a stable Connection");
         return connection;
     }
@@ -137,20 +137,19 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
 
     @Override
     public void onMessage(Message message) {
-        if(message!=null){
+        if (message != null) {
             try {
                 if (message.getClass().equals(ActiveMQObjectMessage.class)) {
                     ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
                     Object o = objectMessage.getObject();
-                    if(o!=null){
+                    if (o != null) {
                         IJMSMessage receivedMessage = (IJMSMessage) o;
-                        if(isReceivedMessageMine(receivedMessage)){
+                        if (isReceivedMessageMine(receivedMessage)) {
                             //drop message
-                            System.out.println(trackerId + " << DROP << "+connectionId + "/"+ serviceName +" << "+ receivedMessage.getPrintable());
-                        }
-                        else{
+                            System.out.println(trackerId + " << DROP << " + connectionId + "/" + serviceName + " << " + receivedMessage.getPrintable());
+                        } else {
                             //log communication
-                            System.out.println(trackerId + " << RECEIVED << "+connectionId + "/" + serviceName +" << "+ receivedMessage.getPrintable());
+                            System.out.println(trackerId + " << RECEIVED << " + connectionId + "/" + serviceName + " << " + receivedMessage.getPrintable());
                             //trigger action
                             receivedMessage.onReceivedEvent(this.trackerId);
                         }

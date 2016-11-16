@@ -18,10 +18,10 @@ public enum MessageCollection {
             return source
                     .getSession()
                     .createObjectMessage(
-                        new HelloMessage(
-                                source.getTrackerId()
-                                        )
-            );
+                            new HelloMessage(
+                                    source.getTrackerId()
+                            )
+                    );
         }
     },
     BYE_BYE {

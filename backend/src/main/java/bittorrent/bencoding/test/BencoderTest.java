@@ -45,7 +45,7 @@ public class BencoderTest {
         }
 
         System.out.println("'\n- Unbencoded String: " + bencoder.unbencodeString(encoded));
-		
+
 		/*
 		 * Integer
 		 */

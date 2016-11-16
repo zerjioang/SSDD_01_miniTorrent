@@ -39,12 +39,11 @@ public enum TrackerGUIEvents {
             return actionEvent -> {
                 System.out.println("Menu force stop event detected");
                 TrackerInstance instance = window.getInstance();
-                if(instance!=null){
-                    if(instance.isMaster()){
+                if (instance != null) {
+                    if (instance.isMaster()) {
                         int result = JOptionPane.showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker Master?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
                         executeOnResult(window, result);
-                    }
-                    else{
+                    } else {
                         int result = showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
                         executeOnResult(window, result);
                     }
@@ -53,7 +52,7 @@ public enum TrackerGUIEvents {
         }
 
         private void executeOnResult(TrackerWindow window, int result) {
-            if(result == JOptionPane.OK_OPTION){
+            if (result == JOptionPane.OK_OPTION) {
                 window.getInstance().stopNode();
                 window.updateTrackerStatus(TrackerStatus.OFFLINE);
             }

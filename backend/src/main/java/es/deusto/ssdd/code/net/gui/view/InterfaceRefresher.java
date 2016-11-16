@@ -9,5 +9,6 @@ import es.deusto.ssdd.code.net.jms.model.TrackerStatus;
 public interface InterfaceRefresher {
 
     void updateNodeType(TrackerInstanceNodeType nodeType);
+
     void updateTrackerStatus(TrackerStatus status);
 }

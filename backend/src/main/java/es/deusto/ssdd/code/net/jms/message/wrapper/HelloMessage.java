@@ -19,7 +19,7 @@ public class HelloMessage implements Serializable, IJMSMessage {
     @Override
     public void onReceivedEvent(String destinationNodeId) {
         TrackerInstance node = TrackerInstance.getNode(destinationNodeId);
-        if(node!=null){
+        if (node != null) {
             node.addRemoteNode(getSourceTrackerId());
             //como se ha añadido un nodo, evaluar otra vez la eleccion del master
             node.beginMasterElectionProcess();
@@ -37,6 +37,6 @@ public class HelloMessage implements Serializable, IJMSMessage {
 
     @Override
     public String getPrintable() {
-        return "HELLO WORLD from "+this.getSourceTrackerId();
+        return "HELLO WORLD from " + this.getSourceTrackerId();
     }
 }
