@@ -45,7 +45,7 @@ public enum TrackerGUIEvents {
                         executeOnResult(window, result);
                     }
                     else{
-                        int result = showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker Master?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
+                        int result = showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
                         executeOnResult(window, result);
                     }
                 }

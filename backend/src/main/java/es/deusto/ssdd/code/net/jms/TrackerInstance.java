@@ -84,10 +84,10 @@ public class TrackerInstance implements Comparable{
         //show tracker window
         showTrackerWindow();
 
-        beginMasterElectionProcess();
-
         this.trackerStatus = TrackerStatus.ONLINE;
-        this.refresh.updateTrackerStatus(this.trackerStatus);
+        if(this.refresh!=null){
+            this.refresh.updateTrackerStatus(this.trackerStatus);
+        }
     }
 
     private void deployServices() {
@@ -130,16 +130,18 @@ public class TrackerInstance implements Comparable{
     }
 
     private void showTrackerWindow() {
-        trackerWindow = new TrackerWindow(getCurrentTrackerInstance());
-        trackerWindow.setVisible(true);
-        this.refresh = trackerWindow;
+        new Thread(() -> {
+            trackerWindow = new TrackerWindow(getCurrentTrackerInstance());
+            trackerWindow.setVisible(true);
+            setRefresh(trackerWindow);
+        }).start();
     }
 
     private TrackerInstance getCurrentTrackerInstance() {
         return this;
     }
 
-    private void beginMasterElectionProcess() {
+    public void beginMasterElectionProcess() {
         if(masterNode==null){
             System.out.println(trackerId + " Master election process begin");
             if(trackerNodeList.size()==1){
@@ -152,14 +154,27 @@ public class TrackerInstance implements Comparable{
                 for(TrackerInstance instance : trackerNodeList){
                     olderIdInstance = this.getOlderTrackerNode(olderIdInstance, instance);
                 }
+                //update its own status
                 this.masterNode = olderIdInstance;
+                updateSelfNodeType();
                 _debug_election_result();
             }
         }
         else{
             System.out.println(trackerId + " Master node ("+masterNode.getTrackerId()+") already known. Election process [ABORT]");
         }
-        this.refresh.updateNodeType(nodeType);
+        if(refresh!=null){
+            this.refresh.updateNodeType(nodeType);
+        }
+    }
+
+    private void updateSelfNodeType() {
+        if(this.equals(masterNode)){
+            this.nodeType = TrackerInstanceNodeType.MASTER;
+        }
+        else{
+            this.nodeType = TrackerInstanceNodeType.SLAVE;
+        }
     }
 
     private void _debug_election_result() {
@@ -228,8 +243,6 @@ public class TrackerInstance implements Comparable{
         if(node!=null){
             //añadir a la lista de nodos
             this.trackerNodeList.add(node);
-            //como se ha añadido un nodo, evaluar otra vez la eleccion del master
-            this.beginMasterElectionProcess();
         }
     }
 
@@ -295,5 +308,9 @@ public class TrackerInstance implements Comparable{
         } catch (JMSException e) {
             e.printStackTrace();
         }
+    }
+
+    public void setRefresh(InterfaceRefresher refresh) {
+        this.refresh = refresh;
     }
 }

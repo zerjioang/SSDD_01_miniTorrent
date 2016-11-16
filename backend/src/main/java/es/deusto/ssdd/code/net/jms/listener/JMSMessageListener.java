@@ -1,7 +1,8 @@
 package es.deusto.ssdd.code.net.jms.listener;
 
-import es.deusto.ssdd.code.net.jms.message.JMSMessageParser;
+import es.deusto.ssdd.code.net.jms.message.IJMSMessage;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.command.ActiveMQObjectMessage;
 
 import javax.jms.*;
 
@@ -10,7 +11,6 @@ import javax.jms.*;
  */
 public class JMSMessageListener implements Runnable, ExceptionListener, MessageListener {
 
-    private JMSMessageParser parser;
     private String connectionId;
     private String serviceName;
     private Connection connection;
@@ -22,7 +22,6 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     public JMSMessageListener(String trackerId, String connectionId, TrackerDaemonSpec trackerDaemonSpec) {
         this.trackerId = trackerId;
         this.serviceName = trackerDaemonSpec.getServiceName();
-        this.parser = new JMSMessageParser(trackerId, connectionId, serviceName);
         try {
             if (connectionId == null) {
                 throw new JMSException("There is JMS service ID  defined before setting up JMS Listener");
@@ -95,6 +94,7 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
             try {
                 connection.close();
             } catch (JMSException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -106,10 +106,14 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     private Destination createDestinationQueue(Session session) throws JMSException {
+        if(session==null)
+            throw new JMSException("No session defined when attempting to create a queue");
         return session.createQueue(serviceName);
     }
 
     private Destination createDestinationTopic(Session session) throws JMSException {
+        if(session==null)
+            throw new JMSException("No session defined when attempting to create a topic");
         return session.createTopic(serviceName);
     }
 
@@ -134,7 +138,33 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     @Override
     public void onMessage(Message message) {
         if(message!=null){
-            parser.process(trackerId, message);
+            try {
+                if (message.getClass().equals(ActiveMQObjectMessage.class)) {
+                    ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
+                    Object o = objectMessage.getObject();
+                    if(o!=null){
+                        IJMSMessage receivedMessage = (IJMSMessage) o;
+                        if(isReceivedMessageMine(receivedMessage)){
+                            //drop message
+                            System.out.println(trackerId + " << DROP << "+connectionId + "/"+ serviceName +" << "+ receivedMessage.getPrintable());
+                        }
+                        else{
+                            //log communication
+                            System.out.println(trackerId + " << RECEIVED << "+connectionId + "/" + serviceName +" << "+ receivedMessage.getPrintable());
+                            //trigger action
+                            receivedMessage.onReceivedEvent(this.trackerId);
+                        }
+                    }
+                } else {
+                    System.out.println("<- Received a Message: " + message);
+                }
+            } catch (JMSException ex) {
+                System.err.println("# JMS Listener MESSAGE PARSING Exception occured: " + ex.getMessage());
+            }
         }
+    }
+
+    private boolean isReceivedMessageMine(IJMSMessage receivedMessage) {
+        return this.trackerId.equals(receivedMessage.getSourceTrackerId());
     }
 }

@@ -8,8 +8,10 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowFocusListener;
 
-public class TrackerWindow extends JFrame implements InterfaceRefresher {
+public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowFocusListener {
 
     private final TrackerInstance instance;
     private final JLabel labelTrackerIp;
@@ -132,6 +134,9 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher {
 
         //set window centered
         setLocationRelativeTo(null);
+
+        //
+        addWindowFocusListener(this);
     }
 
     private JPanel createTopBar() {
@@ -206,6 +211,11 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher {
         return instance;
     }
 
+    public void updateWindowView(){
+        this.updateTrackerStatus(instance.getTrackerStatus());
+        this.updateNodeType(instance.getNodeType());
+    }
+
     public void updateTrackerStatus(TrackerStatus status) {
         if(status!=null){
             this.labelTrackerOnline.setText(""+status);
@@ -216,5 +226,15 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher {
     @Override
     public void updateNodeType(TrackerInstanceNodeType nodeType) {
         this.setTitle("Tracker Node :: "+instance.getNodeType());
+    }
+
+    @Override
+    public void windowGainedFocus(WindowEvent windowEvent) {
+        this.updateWindowView();
+    }
+
+    @Override
+    public void windowLostFocus(WindowEvent windowEvent) {
+
     }
 }
