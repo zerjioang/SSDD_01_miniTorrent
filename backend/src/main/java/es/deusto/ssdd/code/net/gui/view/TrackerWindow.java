@@ -10,6 +10,10 @@ import java.awt.*;
 public class TrackerWindow extends JFrame {
 
     private final TrackerInstance instance;
+    private final JLabel labelTrackerIp;
+    private final JLabel labelTrackerPort;
+    private final JLabel labelTrackerId;
+    private final JLabel labelTrackerOnline;
 
     /**
      * Create the frame.
@@ -20,42 +24,12 @@ public class TrackerWindow extends JFrame {
         //set system theme
         setSystemTheme();
 
-        setTitle("Tracker Admin");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setTitle("Admin window");
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setBounds(100, 100, 450, 300);
         setMinimumSize(new Dimension(800, 400));
 
-        JMenuBar menuBar = new JMenuBar();
-        setJMenuBar(menuBar);
-
-        JMenu mnFile = new JMenu("File");
-        menuBar.add(mnFile);
-
-        JMenuItem mntmExit = new JMenuItem("Exit");
-        mntmExit.addActionListener(TrackerGUIEvents.MENU_EXIT::event);
-        mnFile.add(mntmExit);
-
-        JMenu mnSettings = new JMenu("Settings");
-        menuBar.add(mnSettings);
-
-        JMenuItem mntmConfigurarTracker = new JMenuItem("Tracker settings");
-        mntmConfigurarTracker.addActionListener(TrackerGUIEvents.MENU_CONFIGURE_TRACKER::event);
-        mnSettings.add(mntmConfigurarTracker);
-
-        JMenuItem mntmForceStop = new JMenuItem("Force stop");
-        mntmForceStop.addActionListener(TrackerGUIEvents.MENU_FORCE_STOP::event);
-        mnSettings.add(mntmForceStop);
-
-        JMenu mnHelp = new JMenu("Help");
-        menuBar.add(mnHelp);
-
-        JMenuItem mntmAbout = new JMenuItem("About");
-        mntmAbout.addActionListener(TrackerGUIEvents.MENU_ABOUT::event);
-        mnHelp.add(mntmAbout);
-        JPanel contentPane = new JPanel();
-        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-        contentPane.setLayout(new BorderLayout(0, 0));
-        setContentPane(contentPane);
+        JPanel contentPane = createTopBar();
 
         JPanel panelTop = new JPanel();
         contentPane.add(panelTop, BorderLayout.NORTH);
@@ -63,26 +37,26 @@ public class TrackerWindow extends JFrame {
         JLabel lblTrackerIp = new JLabel("Tracker IP:");
         panelTop.add(lblTrackerIp);
 
-        JLabel label = new JLabel("127.0.0.1");
-        panelTop.add(label);
+        labelTrackerIp = new JLabel("127.0.0.1");
+        panelTop.add(labelTrackerIp);
 
         JLabel lblTrackerPort = new JLabel("Tracker port:");
         panelTop.add(lblTrackerPort);
 
-        JLabel label_1 = new JLabel("1234");
-        panelTop.add(label_1);
+        labelTrackerPort = new JLabel("1234");
+        panelTop.add(labelTrackerPort);
 
         JLabel lblTrackerId = new JLabel("Tracker ID:");
         panelTop.add(lblTrackerId);
 
-        JLabel lblf = new JLabel("4F");
-        panelTop.add(lblf);
+        labelTrackerId = new JLabel("4F");
+        panelTop.add(labelTrackerId);
 
         JLabel lblStatus = new JLabel("Status:");
         panelTop.add(lblStatus);
 
-        JLabel lblOnline = new JLabel("Online");
-        panelTop.add(lblOnline);
+        labelTrackerOnline = new JLabel("Online");
+        panelTop.add(labelTrackerOnline);
 
         JPanel panelCentre = new JPanel();
         contentPane.add(panelCentre, BorderLayout.CENTER);
@@ -150,6 +124,57 @@ public class TrackerWindow extends JFrame {
 
         JLabel label_4 = new JLabel("0");
         panelBottom.add(label_4);
+
+        //populate window with data
+        populateWindow();
+
+        //set window centered
+        setLocationRelativeTo(null);
+    }
+
+    private JPanel createTopBar() {
+        JMenuBar menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
+
+        JMenu mnFile = new JMenu("File");
+        menuBar.add(mnFile);
+
+        JMenuItem mntmExit = new JMenuItem("Exit");
+        mntmExit.addActionListener(TrackerGUIEvents.MENU_EXIT::event);
+        mnFile.add(mntmExit);
+
+        JMenu mnSettings = new JMenu("Settings");
+        menuBar.add(mnSettings);
+
+        JMenuItem mntmConfigurarTracker = new JMenuItem("Tracker settings");
+        mntmConfigurarTracker.addActionListener(TrackerGUIEvents.MENU_CONFIGURE_TRACKER::event);
+        mnSettings.add(mntmConfigurarTracker);
+
+        JMenuItem mntmForceStop = new JMenuItem("Force stop");
+        mntmForceStop.addActionListener(TrackerGUIEvents.MENU_FORCE_STOP::event);
+        mnSettings.add(mntmForceStop);
+
+        JMenu mnHelp = new JMenu("Help");
+        menuBar.add(mnHelp);
+
+        JMenuItem mntmAbout = new JMenuItem("About");
+        mntmAbout.addActionListener(TrackerGUIEvents.MENU_ABOUT::event);
+        mnHelp.add(mntmAbout);
+        JPanel contentPane = new JPanel();
+        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+        contentPane.setLayout(new BorderLayout(0, 0));
+        setContentPane(contentPane);
+        return contentPane;
+    }
+
+    private void populateWindow() {
+        if(instance!=null){
+            setTitle("Tracker Node :: "+instance.getNodeType());
+            labelTrackerIp.setText(instance.getIp());
+            labelTrackerPort.setText(""+instance.getPort());
+            labelTrackerId.setText(instance.getTrackerId());
+            labelTrackerOnline.setText(""+instance.getTrackerStatus());
+        }
     }
 
     /**

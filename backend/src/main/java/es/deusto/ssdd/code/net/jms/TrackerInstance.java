@@ -7,14 +7,13 @@ import es.deusto.ssdd.code.net.jms.listener.JMSMessageSender;
 import es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec;
 import es.deusto.ssdd.code.net.jms.message.MessageCollection;
 import es.deusto.ssdd.code.net.jms.model.TrackerInstanceNodeType;
+import es.deusto.ssdd.code.net.jms.model.TrackerStatus;
 
 import javax.jms.JMSException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.DATA_SYNC_SERVICE;
-import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.HANDSHAKE_SERVICE;
-import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.KEEP_ALIVE_SERVICE;
+import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.*;
 
 /**
  * Created by .local on 14/11/2016.
@@ -30,10 +29,10 @@ public class TrackerInstance implements Comparable{
     private static final HashMap<String, TrackerInstance> map = new HashMap<>();
 
     //listener map
-    private final HashMap<TrackerDaemonSpec, JMSMessageListener> listenerHashMap;
+    private HashMap<TrackerDaemonSpec, JMSMessageListener> listenerHashMap;
 
     //sender map
-    private final HashMap<TrackerDaemonSpec, JMSMessageSender> senderHashMap;
+    private HashMap<TrackerDaemonSpec, JMSMessageSender> senderHashMap;
 
     private final String trackerId;
 
@@ -46,12 +45,20 @@ public class TrackerInstance implements Comparable{
     private final ArrayList<TrackerInstance> trackerNodeList;
 
     private TrackerWindow trackerWindow;
+    private String ip;
+    private int port;
+    private TrackerStatus trackerStatus;
 
     public TrackerInstance() {
+
+        this. trackerStatus = TrackerStatus.OFFLINE;
+
         System.out.println("Running tracker instance " + (counter + 1));
         counter++;
 
         trackerId = TrackerUtil.getDeviceMacAddress() + ":" + System.nanoTime();
+        ip = TrackerUtil.getIP();
+        port = 8000;
         System.out.println("Tracker ID: " + trackerId);
 
         //add to instance map. only for development with multinodes in local mode
@@ -60,30 +67,7 @@ public class TrackerInstance implements Comparable{
         //init tracker node list
         trackerNodeList = new ArrayList<>();
 
-        //init maps
-        senderHashMap = new HashMap<>();
-        listenerHashMap = new HashMap<>();
-
-        //populate maps
-        senderHashMap.put(HANDSHAKE_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
-        );
-        senderHashMap.put(KEEP_ALIVE_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
-        );
-        senderHashMap.put(DATA_SYNC_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
-        );
-
-        listenerHashMap.put(HANDSHAKE_SERVICE,
-                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
-        );
-        listenerHashMap.put(KEEP_ALIVE_SERVICE,
-                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
-        );
-        listenerHashMap.put(DATA_SYNC_SERVICE,
-                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
-        );
+        setupDaemons();
 
         //add itself to tracker node list
         trackerNodeList.add(this);
@@ -97,7 +81,43 @@ public class TrackerInstance implements Comparable{
         //thread(listener, false);
         //thread(sender, false);
 
+        this. trackerStatus = TrackerStatus.ONLINE;
+
         showTrackerWindow();
+    }
+
+    private void setupDaemons() {
+        //init maps
+        senderHashMap = new HashMap<>();
+        listenerHashMap = new HashMap<>();
+
+        setupSenderDaemons();
+        setupListenerDaemons();
+    }
+
+    private void setupSenderDaemons() {
+        //populate maps
+        senderHashMap.put(HANDSHAKE_SERVICE,
+                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
+        );
+        senderHashMap.put(KEEP_ALIVE_SERVICE,
+                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
+        );
+        senderHashMap.put(DATA_SYNC_SERVICE,
+                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
+        );
+    }
+
+    private void setupListenerDaemons() {
+        listenerHashMap.put(HANDSHAKE_SERVICE,
+                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
+        );
+        listenerHashMap.put(KEEP_ALIVE_SERVICE,
+                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
+        );
+        listenerHashMap.put(DATA_SYNC_SERVICE,
+                new JMSMessageListener(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
+        );
     }
 
     private void showTrackerWindow() {
@@ -219,5 +239,29 @@ public class TrackerInstance implements Comparable{
     private String getTrackerTimeStamp() {
         String[] data = getTrackerId().split(":");
         return data[TIMESTAMP_VALUE];
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public TrackerStatus getTrackerStatus() {
+        return trackerStatus;
+    }
+
+    public void setTrackerStatus(TrackerStatus trackerStatus) {
+        this.trackerStatus = trackerStatus;
     }
 }

@@ -39,4 +39,15 @@ public class TrackerUtil {
     public static boolean isMac() {
         return (OS.contains("mac"));
     }
+
+    public static String getIP() {
+        InetAddress ip;
+        try {
+            ip = InetAddress.getLocalHost();
+            return ip.getHostAddress();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return "unknown";
+    }
 }
