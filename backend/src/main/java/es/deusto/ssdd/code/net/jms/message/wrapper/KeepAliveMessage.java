@@ -18,6 +18,7 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
 
     @Override
     public void onReceivedEvent(String destinationNodeId) {
+        System.out.println("Keep alive recibido!");
         TrackerInstance node = TrackerInstance.getNode(destinationNodeId);
         if (node != null) {
             node.resetNodeLifeCountdown();

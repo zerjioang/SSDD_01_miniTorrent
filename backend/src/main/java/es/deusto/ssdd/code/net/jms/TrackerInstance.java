@@ -87,13 +87,37 @@ public class TrackerInstance implements Comparable {
                 trimNodeList();
             }
         };
+
+        Thread sendKeepAlives = new Thread() {
+            public void run() {
+                sendKeepAlive();
+            }
+        };
+
         pendingLifetime = TOTAL_LIFETIME;
 
         thread(trimNodeList, false);
+        thread(sendKeepAlives, false);
     }
 
     public static TrackerInstance getNode(String id) {
         return TrackerInstance.map.get(id);
+    }
+
+    public synchronized void sendKeepAlive() {
+        try {
+            while (true) {
+                JMSMessageSender sender = getSender(TrackerDaemonSpec.KEEP_ALIVE_SERVICE);
+                sender.send(MessageCollection.KEEP_ALIVE);
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (JMSException e) {
+            e.printStackTrace();
+        }
     }
 
     public int getPendingLifetime() {
