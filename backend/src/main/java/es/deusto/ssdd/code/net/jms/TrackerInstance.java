@@ -84,7 +84,7 @@ public class TrackerInstance implements Comparable {
         }
 
         Thread trimNodeList = new Thread() {
-            public synchronized void run() {
+            public void run() {
                 trimNodeList();
             }
         };
@@ -140,7 +140,7 @@ public class TrackerInstance implements Comparable {
 
             System.out.println();
             try {
-                Thread.sleep(5000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
