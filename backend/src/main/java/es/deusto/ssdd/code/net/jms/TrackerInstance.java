@@ -13,6 +13,7 @@ import es.deusto.ssdd.code.net.jms.model.TrackerStatus;
 import javax.jms.JMSException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.*;
 
@@ -21,17 +22,17 @@ import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.*;
  */
 public class TrackerInstance implements Comparable {
 
+    public static final int TOTAL_LIFETIME = 5;
     private static final String ACTIVE_MQ_SERVER = "tcp://localhost:61616";
-
     private static final int THIS_IS_OLDER = 1;
     private static final int TIMESTAMP_VALUE = 1;
     private static final String ID_SEPARATOR_TAG = ">";
     private static final HashMap<String, TrackerInstance> map = new HashMap<>();
     private static int counter = 0;
     private final String trackerId;
-
     //tracker node list
     private final ArrayList<TrackerInstance> trackerNodeList;
+    private int pendingLifetime;
     //listener map
     private HashMap<TrackerDaemonSpec, JMSMessageListener> listenerHashMap;
     //sender map
@@ -83,16 +84,25 @@ public class TrackerInstance implements Comparable {
         }
 
         Thread trimNodeList = new Thread() {
-            public void run() {
+            public synchronized void run() {
                 trimNodeList();
             }
         };
+        pendingLifetime = TOTAL_LIFETIME;
 
-        thread(trimNodeList, true);
+        thread(trimNodeList, false);
     }
 
     public static TrackerInstance getNode(String id) {
         return TrackerInstance.map.get(id);
+    }
+
+    public int getPendingLifetime() {
+        return pendingLifetime;
+    }
+
+    public void setPendingLifetime(int pendingLifetime) {
+        this.pendingLifetime = pendingLifetime;
     }
 
     private void deployServices() {
@@ -113,16 +123,32 @@ public class TrackerInstance implements Comparable {
         while (true) {
             System.out.println("Soy: " + getTrackerId());
             System.out.println("Mi lista de trackers(" + getTrackerNodeList().size() + ") es: ");
-            for (TrackerInstance instance : getTrackerNodeList()) {
-                System.out.println(instance.getTrackerId());
+
+            Iterator<TrackerInstance> iterator = getTrackerNodeList().iterator();
+            while (iterator.hasNext()) {
+                TrackerInstance instance = iterator.next();
+
+                if (instance.getPendingLifetime() == 0) {
+                    removeNodeFromList(instance);
+                } else {
+                    System.out.println("Sobrevives por que te quedan " +
+                            instance.getPendingLifetime() +
+                            " segundos de vida.");
+                    instance.setPendingLifetime(instance.getPendingLifetime() - 1);
+                }
             }
+
             System.out.println();
             try {
-                Thread.sleep(3000);
+                Thread.sleep(5000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void resetNodeLifeCountdown() {
+        pendingLifetime = TOTAL_LIFETIME;
     }
 
     private void setupSenderDaemons() {
@@ -287,7 +313,7 @@ public class TrackerInstance implements Comparable {
         }
     }
 
-    private boolean removeNodeFromList(TrackerInstance node) {
+    private synchronized boolean removeNodeFromList(TrackerInstance node) {
         //eliminar de la lista
         boolean removed = this.trackerNodeList.remove(node);
         if (removed) {

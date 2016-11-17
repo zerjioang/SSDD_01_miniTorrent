@@ -20,9 +20,7 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
     public void onReceivedEvent(String destinationNodeId) {
         TrackerInstance node = TrackerInstance.getNode(destinationNodeId);
         if (node != null) {
-            node.addRemoteNode(getSourceTrackerId());
-            //como se ha añadido un nodo, evaluar otra vez la eleccion del master
-            node.beginMasterElectionProcess();
+            node.resetNodeLifeCountdown();
         }
     }
 
