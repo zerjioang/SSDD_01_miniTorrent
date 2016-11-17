@@ -9,11 +9,10 @@ public class NodeClusterTrackerDemo {
     public static void main(String[] args) throws Exception {
         new TrackerInstance().deploy();
         new TrackerInstance().deploy();
-        /*
         new TrackerInstance().deploy();
         new TrackerInstance().deploy();
-        new TrackerInstance().deploy();
-        new TrackerInstance().deploy();
-        */
+        //new TrackerInstance().deploy();
+        //new TrackerInstance().deploy();
+
     }
 }

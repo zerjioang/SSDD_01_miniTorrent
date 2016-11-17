@@ -3,6 +3,7 @@ package es.deusto.ssdd.code.net.jms.message;
 import es.deusto.ssdd.code.net.jms.listener.JMSMessageSender;
 import es.deusto.ssdd.code.net.jms.message.wrapper.GoodbyeMessage;
 import es.deusto.ssdd.code.net.jms.message.wrapper.HelloMessage;
+import es.deusto.ssdd.code.net.jms.message.wrapper.KeepAliveMessage;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -31,6 +32,18 @@ public enum MessageCollection {
                     .getSession()
                     .createObjectMessage(
                             new GoodbyeMessage(
+                                    source.getTrackerId()
+                            )
+                    );
+        }
+    },
+    KEEP_ALIVE {
+        @Override
+        public Message getMessage(JMSMessageSender source) throws JMSException {
+            return source
+                    .getSession()
+                    .createObjectMessage(
+                            new KeepAliveMessage(
                                     source.getTrackerId()
                             )
                     );

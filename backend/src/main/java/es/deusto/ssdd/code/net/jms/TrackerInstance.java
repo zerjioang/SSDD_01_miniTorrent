@@ -29,6 +29,7 @@ public class TrackerInstance implements Comparable {
     private static final HashMap<String, TrackerInstance> map = new HashMap<>();
     private static int counter = 0;
     private final String trackerId;
+
     //tracker node list
     private final ArrayList<TrackerInstance> trackerNodeList;
     //listener map
@@ -80,6 +81,14 @@ public class TrackerInstance implements Comparable {
         if (this.refresh != null) {
             this.refresh.updateTrackerStatus(this.trackerStatus);
         }
+
+        Thread trimNodeList = new Thread() {
+            public void run() {
+                trimNodeList();
+            }
+        };
+
+        thread(trimNodeList, true);
     }
 
     public static TrackerInstance getNode(String id) {
@@ -98,6 +107,22 @@ public class TrackerInstance implements Comparable {
 
         setupSenderDaemons();
         setupListenerDaemons();
+    }
+
+    private synchronized void trimNodeList() {
+        while (true) {
+            System.out.println("Soy: " + getTrackerId());
+            System.out.println("Mi lista de trackers(" + getTrackerNodeList().size() + ") es: ");
+            for (TrackerInstance instance : getTrackerNodeList()) {
+                System.out.println(instance.getTrackerId());
+            }
+            System.out.println();
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void setupSenderDaemons() {
@@ -231,6 +256,10 @@ public class TrackerInstance implements Comparable {
 
     public void setNodeType(TrackerInstanceNodeType nodeType) {
         this.nodeType = nodeType;
+    }
+
+    public ArrayList<TrackerInstance> getTrackerNodeList() {
+        return trackerNodeList;
     }
 
     public void addRemoteNode(String sourceTrackerId) {
