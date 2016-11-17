@@ -82,29 +82,14 @@ public class TrackerInstance implements Comparable {
             this.refresh.updateTrackerStatus(this.trackerStatus);
         }
 
-        Thread trimNodeList = new Thread() {
-            public void run() {
-                trimNodeList();
-            }
-        };
-
-        Thread sendKeepAlives = new Thread() {
-            public void run() {
-                sendKeepAlive();
-            }
-        };
-
         pendingLifetime = TOTAL_LIFETIME;
-
-        thread(trimNodeList, false);
-        thread(sendKeepAlives, false);
     }
 
     public static TrackerInstance getNode(String id) {
         return TrackerInstance.map.get(id);
     }
 
-    public synchronized void sendKeepAlive() {
+    public void sendKeepAlive() {
         try {
             while (true) {
                 JMSMessageSender sender = getSender(TrackerDaemonSpec.KEEP_ALIVE_SERVICE);
@@ -128,9 +113,24 @@ public class TrackerInstance implements Comparable {
         this.pendingLifetime = pendingLifetime;
     }
 
-    private void deployServices() {
+    private synchronized void deployServices() {
         thread(getSender(HANDSHAKE_SERVICE), false);
         thread(getListener(HANDSHAKE_SERVICE), false);
+
+        Thread trimNodeListThread = new Thread() {
+            public void run() {
+                trimNodeList();
+            }
+        };
+
+        Thread sendKeepAlivesThread = new Thread() {
+            public void run() {
+                sendKeepAlive();
+            }
+        };
+
+        thread(trimNodeListThread, false);
+        thread(sendKeepAlivesThread, false);
     }
 
     private void setupDaemons() {
@@ -142,7 +142,7 @@ public class TrackerInstance implements Comparable {
         setupListenerDaemons();
     }
 
-    private synchronized void trimNodeList() {
+    private void trimNodeList() {
         while (true) {
             System.out.println("Soy: " + getTrackerId());
             System.out.println("Mi lista de trackers(" + getTrackerNodeList().size() + ") es: ");
