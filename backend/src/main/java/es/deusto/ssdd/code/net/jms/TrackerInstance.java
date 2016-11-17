@@ -13,7 +13,6 @@ import es.deusto.ssdd.code.net.jms.model.TrackerStatus;
 import javax.jms.JMSException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 
 import static es.deusto.ssdd.code.net.jms.listener.TrackerDaemonSpec.*;
 
@@ -124,12 +123,11 @@ public class TrackerInstance implements Comparable {
             System.out.println("Soy: " + getTrackerId());
             System.out.println("Mi lista de trackers(" + getTrackerNodeList().size() + ") es: ");
 
-            Iterator<TrackerInstance> iterator = getTrackerNodeList().iterator();
-            while (iterator.hasNext()) {
-                TrackerInstance instance = iterator.next();
+            ArrayList<TrackerInstance> instancesToRemove = new ArrayList<TrackerInstance>();
 
+            for (TrackerInstance instance : getTrackerNodeList()) {
                 if (instance.getPendingLifetime() == 0) {
-                    removeNodeFromList(instance);
+                    instancesToRemove.add(instance);
                 } else {
                     System.out.println("Sobrevives por que te quedan " +
                             instance.getPendingLifetime() +
@@ -137,6 +135,11 @@ public class TrackerInstance implements Comparable {
                     instance.setPendingLifetime(instance.getPendingLifetime() - 1);
                 }
             }
+
+            for (TrackerInstance instance : instancesToRemove) {
+                removeNodeFromList(instance);
+            }
+
 
             System.out.println();
             try {
