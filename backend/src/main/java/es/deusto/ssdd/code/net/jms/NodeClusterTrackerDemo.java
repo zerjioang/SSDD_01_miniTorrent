@@ -1,18 +1,28 @@
 package es.deusto.ssdd.code.net.jms;
 
 
-/**
- * Created by .local on 08/11/2016.
- */
+import javax.jms.JMSException;
+
 public class NodeClusterTrackerDemo {
 
-    public static void main(String[] args) throws Exception {
-        new TrackerInstance().deploy();
-        new TrackerInstance().deploy();
-        new TrackerInstance().deploy();
-        new TrackerInstance().deploy();
-        //new TrackerInstance().deploy();
-        //new TrackerInstance().deploy();
+    private static final int NODES = 3;
 
+    public static void main(String[] args) throws Exception {
+        for(int i=0; i< NODES; i++){
+            try {
+                new TrackerInstance().deploy();
+            } catch (JMSException e) {
+                e.printStackTrace();
+            }
+            /*
+            new Thread(() -> {
+                try {
+                    new TrackerInstance().deploy();
+                } catch (JMSException e) {
+                    e.printStackTrace();
+                }
+            }, "Tracker instance "+i).start();
+            */
+        }
     }
 }

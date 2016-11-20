@@ -10,6 +10,9 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowFocusListener;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowFocusListener {
 
@@ -18,6 +21,8 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
     private final JLabel labelTrackerPort;
     private final JLabel labelTrackerId;
     private final JLabel labelTrackerOnline;
+    private final JTable activeTrackersTable;
+    private DefaultTableModel activeTrackersTableModel;
 
     /**
      * Create the frame.
@@ -76,18 +81,15 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         JScrollPane scrollPane_1 = new JScrollPane();
         panel.add(scrollPane_1, BorderLayout.CENTER);
 
-        JTable table = new JTable();
-        table.setModel(new DefaultTableModel(
-                new Object[][]{
-                        {null, null, null, null, null},
-                        {null, null, null, null, null},
-                        {null, null, null, null, null},
-                },
+        activeTrackersTable = new JTable();
+        activeTrackersTableModel =  new DefaultTableModel();
+        activeTrackersTableModel.setColumnIdentifiers(
                 new String[]{
                         "ID", "Tracker IP", "Tracker port", "Node type", "Last keep alive"
                 }
-        ));
-        scrollPane_1.setViewportView(table);
+        );
+        activeTrackersTable.setModel(activeTrackersTableModel);
+        scrollPane_1.setViewportView(activeTrackersTable);
 
         JPanel panel_1 = new JPanel();
         tabbedPane.addTab("Active Swarms", null, panel_1, null);
@@ -221,11 +223,45 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
             this.labelTrackerOnline.setText("" + status);
             this.labelTrackerOnline.setForeground(status.getColor());
         }
+        //empty tracker nodes tables info
+        emptyActiveTrackersTable();
+        this.repaint();
+    }
+
+    @Override
+    public void addTrackerNodeToTable(HashMap<String, TrackerInstance> remoteNodeList) {
+        // add row dynamically into the table
+        //columns: "ID", "Tracker IP", "Tracker port", "Node type", "Last keep alive"
+        try{
+            emptyActiveTrackersTable();
+
+            Iterator it = remoteNodeList.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry pair = (Map.Entry)it.next();
+                TrackerInstance remoteNode = (TrackerInstance) pair.getValue();
+                activeTrackersTableModel.addRow(
+                        new Object[] {
+                                remoteNode.getTrackerId(), remoteNode.getIp(), remoteNode.getPort(), remoteNode.getNodeType().toString(), remoteNode.getLastKeepAlive()
+                        }
+                );
+                it.remove();
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    private void emptyActiveTrackersTable() {
+        while(activeTrackersTableModel.getRowCount()!=0){
+            activeTrackersTableModel.removeRow(0);
+        }
     }
 
     @Override
     public void updateNodeType(TrackerInstanceNodeType nodeType) {
         this.setTitle("Tracker Node :: " + instance.getNodeType());
+        this.repaint();
     }
 
     @Override

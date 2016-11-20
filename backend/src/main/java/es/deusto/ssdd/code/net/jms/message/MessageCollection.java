@@ -37,6 +37,7 @@ public enum MessageCollection {
                     );
         }
     },
+
     KEEP_ALIVE {
         @Override
         public Message getMessage(JMSMessageSender source) throws JMSException {

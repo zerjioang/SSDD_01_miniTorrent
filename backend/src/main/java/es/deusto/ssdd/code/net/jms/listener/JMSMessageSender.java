@@ -38,7 +38,7 @@ public class JMSMessageSender implements Runnable {
     }
 
     public void run() {
-        System.out.println(trackerId + " JMS Daemon sender [STARTED]");
+        System.out.println(trackerId + " JMS "+getMessageSenderId()+" Daemon sender [STARTED]");
         try {
             // Create a Connection
             connection = createConnection(connectionId);
@@ -71,19 +71,25 @@ public class JMSMessageSender implements Runnable {
         }
     }
 
+    private String getMessageSenderId() {
+        return "[ "+connectionId + "/" + serviceName+ " ]";
+    }
+
     private void triggerMessageSendAction(ActiveMQObjectMessage message) {
-        if (message != null) {
-            try {
-                Object o = message.getObject();
-                if (o != null) {
-                    IJMSMessage m = (IJMSMessage) o;
-                    System.out.println(trackerId + " >> SEND >> " + connectionId + "/" + serviceName + " >> " + m.getPrintable());
-                    m.onBroadcastEvent();
+        new Thread(() -> {
+            if (message != null) {
+                try {
+                    Object o = message.getObject();
+                    if (o != null) {
+                        IJMSMessage m = (IJMSMessage) o;
+                        System.out.println(trackerId + " >> SEND >> " + getMessageSenderId() + " >> " + m.getPrintable());
+                        m.onBroadcastEvent();
+                    }
+                } catch (JMSException e) {
+                    e.printStackTrace();
                 }
-            } catch (JMSException e) {
-                e.printStackTrace();
             }
-        }
+        }).start();
     }
 
     private Connection createConnection(String connectionId) throws JMSException {
@@ -126,7 +132,13 @@ public class JMSMessageSender implements Runnable {
         if (message == null) {
             throw new JMSException("There is no valid message to send");
         }
-        producer.send(message);
+        new Thread(() -> {
+            try {
+                producer.send(message);
+            } catch (JMSException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     private void closeSender(Connection connection, Session session) throws JMSException {

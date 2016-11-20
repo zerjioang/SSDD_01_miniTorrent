@@ -10,18 +10,33 @@ import java.io.Serializable;
  */
 public class KeepAliveMessage implements Serializable, IJMSMessage {
 
-    private final String trackerId;
+    private final String remoteNodeId;
 
     public KeepAliveMessage(String trackerId) {
-        this.trackerId = trackerId;
+        this.remoteNodeId = trackerId;
     }
 
     @Override
-    public void onReceivedEvent(String destinationNodeId) {
-        System.out.println("Keep alive recibido!");
-        TrackerInstance node = TrackerInstance.getNode(destinationNodeId);
-        if (node != null) {
-            node.resetNodeLifeCountdown();
+    public void onReceivedEvent(String currentNodeId) {
+        TrackerInstance remoteNode = TrackerInstance.getNode(remoteNodeId);
+        TrackerInstance thisNode = TrackerInstance.getNode(currentNodeId);
+        updateNodeLifeStatus(thisNode, remoteNode);
+        addNodeToTrackerNodeList(thisNode, remoteNode);
+    }
+
+    private void addNodeToTrackerNodeList(TrackerInstance thisNode, TrackerInstance remoteNode) {
+        if (remoteNode != null) {
+            boolean alreadyDiscovered = thisNode.isAlreadyDiscovered(remoteNode);
+            if(!alreadyDiscovered){
+                thisNode.addRemoteNode(remoteNode);
+            }
+            thisNode.updateNodeTable(thisNode.getTrackerNodeList());
+        }
+    }
+
+    private void updateNodeLifeStatus(TrackerInstance thisNode, TrackerInstance remoteNode) {
+        if (remoteNode != null) {
+            thisNode.resetRemoteNodeTimeInLocalRegistry(remoteNode);
         }
     }
 
@@ -31,7 +46,7 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
 
     @Override
     public String getSourceTrackerId() {
-        return this.trackerId;
+        return this.remoteNodeId;
     }
 
     @Override

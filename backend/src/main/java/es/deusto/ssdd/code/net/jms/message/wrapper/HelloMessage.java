@@ -10,20 +10,22 @@ import java.io.Serializable;
  */
 public class HelloMessage implements Serializable, IJMSMessage {
 
-    private final String trackerId;
+    private final String remoteNodeId;
 
     public HelloMessage(String trackerId) {
-        this.trackerId = trackerId;
+        this.remoteNodeId = trackerId;
     }
 
     @Override
-    public void onReceivedEvent(String destinationNodeId) {
-        TrackerInstance node = TrackerInstance.getNode(destinationNodeId);
-        if (node != null) {
-            node.addRemoteNode(getSourceTrackerId());
-            //como se ha añadido un nodo, evaluar otra vez la eleccion del master
-            node.beginMasterElectionProcess();
+    public void onReceivedEvent(String currentId) {
+        TrackerInstance thisNode = TrackerInstance.getNode(currentId);
+        TrackerInstance remoteNode = TrackerInstance.getNode(remoteNodeId);
+        if (remoteNode != null) {
+            thisNode.addRemoteNode(remoteNode);
+            thisNode.updateNodeTable(thisNode.getTrackerNodeList());
         }
+        thisNode.beginMasterElectionProcess();
+        thisNode._debug_election_result();
     }
 
     @Override
@@ -32,7 +34,7 @@ public class HelloMessage implements Serializable, IJMSMessage {
 
     @Override
     public String getSourceTrackerId() {
-        return this.trackerId;
+        return this.remoteNodeId;
     }
 
     @Override

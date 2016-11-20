@@ -33,8 +33,12 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     public void run() {
-        System.out.println(trackerId + " JMS Daemon listener [STARTED]");
+        System.out.println(trackerId + " JMS "+getMessageListenerId()+" Daemon listener [STARTED]");
         runDaemonListener();
+    }
+
+    private String getMessageListenerId() {
+        return "[ "+connectionId + "/" + serviceName+ " ]";
     }
 
     private void runDaemonListener() {
@@ -132,35 +136,44 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     public synchronized void onException(JMSException ex) {
-        System.err.println("# JMS Listener Daemon Exception occured: " + ex.getMessage());
+        System.err.println(trackerId+"# JMS Listener ("+getMessageListenerId()+") Daemon Exception occured: " + ex.getMessage());
     }
 
     @Override
     public void onMessage(Message message) {
-        if (message != null) {
-            try {
-                if (message.getClass().equals(ActiveMQObjectMessage.class)) {
-                    ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
-                    Object o = objectMessage.getObject();
-                    if (o != null) {
-                        IJMSMessage receivedMessage = (IJMSMessage) o;
-                        if (isReceivedMessageMine(receivedMessage)) {
-                            //drop message
-                            System.out.println(trackerId + " << DROP << " + connectionId + "/" + serviceName + " << " + receivedMessage.getPrintable());
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (message != null) {
+                    try {
+                        if (message.getClass().equals(ActiveMQObjectMessage.class)) {
+                            ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
+                            Object o = objectMessage.getObject();
+                            if (o != null) {
+                                IJMSMessage receivedMessage = (IJMSMessage) o;
+                                if (isReceivedMessageMine(receivedMessage)) {
+                                    //drop message
+                                    //System.out.println(trackerId + " << DROP << " + getMessageListenerId() + " << " + receivedMessage.getPrintable());
+                                } else {
+                                    //log communication
+                                    System.out.println(trackerId + " << RECEIVED << " + getMessageListenerId() + " << " + receivedMessage.getPrintable());
+                                    //trigger action
+                                    receivedMessage.onReceivedEvent(getTrackerId());
+                                }
+                            }
                         } else {
-                            //log communication
-                            System.out.println(trackerId + " << RECEIVED << " + connectionId + "/" + serviceName + " << " + receivedMessage.getPrintable());
-                            //trigger action
-                            receivedMessage.onReceivedEvent(this.trackerId);
+                            System.out.println("<- Received a Message: " + message);
                         }
+                    } catch (JMSException ex) {
+                        System.err.println("# JMS Listener MESSAGE PARSING Exception occured: " + ex.getMessage());
                     }
-                } else {
-                    System.out.println("<- Received a Message: " + message);
                 }
-            } catch (JMSException ex) {
-                System.err.println("# JMS Listener MESSAGE PARSING Exception occured: " + ex.getMessage());
             }
-        }
+        }).start();
+    }
+
+    private String getTrackerId() {
+        return trackerId;
     }
 
     private boolean isReceivedMessageMine(IJMSMessage receivedMessage) {

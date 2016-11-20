@@ -10,20 +10,20 @@ import java.io.Serializable;
  */
 public class GoodbyeMessage implements Serializable, IJMSMessage {
 
-    private final String trackerId;
+    private final String remoteNodeId;
 
     public GoodbyeMessage(String trackerId) {
-        this.trackerId = trackerId;
+        this.remoteNodeId = trackerId;
     }
 
     @Override
-    public void onReceivedEvent(String myLocalId) {
-        TrackerInstance thisNode = TrackerInstance.getNode(myLocalId);
-        TrackerInstance remoteNode = TrackerInstance.getNode(trackerId);
+    public void onReceivedEvent(String currentNodeId) {
+        TrackerInstance thisNode = TrackerInstance.getNode(currentNodeId);
+        TrackerInstance remoteNode = TrackerInstance.getNode(remoteNodeId);
         if (thisNode != null) {
-            thisNode.removeRemoteNode(trackerId);
+            thisNode.removeRemoteNode(remoteNodeId);
             if (remoteNode.isMaster()) {
-                System.out.println(myLocalId + " MASTER is gone. Election time!!");
+                System.out.println(currentNodeId + " MASTER is gone. Election time!!");
                 thisNode.beginMasterElectionProcess();
             }
         }
@@ -31,12 +31,12 @@ public class GoodbyeMessage implements Serializable, IJMSMessage {
 
     @Override
     public void onBroadcastEvent() {
-        System.out.println(trackerId + " Tracker goodbye message broadcast event here");
+        System.out.println(remoteNodeId + " Tracker goodbye message broadcast event here");
     }
 
     @Override
     public String getSourceTrackerId() {
-        return this.trackerId;
+        return this.remoteNodeId;
     }
 
     @Override

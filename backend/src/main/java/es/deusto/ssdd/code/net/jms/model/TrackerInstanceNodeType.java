@@ -5,5 +5,22 @@ package es.deusto.ssdd.code.net.jms.model;
  */
 public enum TrackerInstanceNodeType {
 
-    MASTER, SLAVE;
+    MASTER {
+        @Override
+        public String toString() {
+            return "MASTER";
+        }
+    }, SLAVE {
+        @Override
+        public String toString() {
+            return "SLAVE";
+        }
+    }, NONE {
+        @Override
+        public String toString() {
+            return "NONE";
+        }
+    };
+
+    public abstract String toString();
 }
