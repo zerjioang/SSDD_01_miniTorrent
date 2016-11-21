@@ -14,15 +14,6 @@ public class NodeClusterTrackerDemo {
             } catch (JMSException e) {
                 e.printStackTrace();
             }
-            /*
-            new Thread(() -> {
-                try {
-                    new TrackerInstance().deploy();
-                } catch (JMSException e) {
-                    e.printStackTrace();
-                }
-            }, "Tracker instance "+i).start();
-            */
         }
     }
 }
