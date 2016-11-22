@@ -9,31 +9,27 @@ import java.sql.DriverManager;
 public class PersistenceHandler {
 
     private static final String DRIVER_NAME = "org.sqlite.JDBC";
-    private static final String DATABASE_PATH = "jdbc:sqlite:test.db";
-    private static PersistenceHandler ourInstance = new PersistenceHandler();
+    private static final String DATABASE_PATH = "jdbc:sqlite:";
     private boolean loaded;
     private Connection c;
 
-    private PersistenceHandler() {
+    public PersistenceHandler(String trackerId) {
+        System.out.println(trackerId+" loading persistence handler");
         this.loaded = false;
-        init();
+        init(trackerId);
     }
 
-    public static PersistenceHandler getInstance() {
-        return ourInstance;
-    }
-
-    private void init() {
+    private void init(String trackerId) {
         c = null;
         try {
             Class.forName(DRIVER_NAME);
-            c = DriverManager.getConnection(DATABASE_PATH);
+            String databaseName = trackerId+".db";
+            c = DriverManager.getConnection(DATABASE_PATH+databaseName);
+            System.out.println("Opened database successfully");
+            this.loaded = true;
         } catch (Exception e) {
-            System.err.println(e.getClass().getName() + ": " + e.getMessage());
-            System.exit(0);
+            e.printStackTrace();
         }
-        System.out.println("Opened database successfully");
-        this.loaded = true;
     }
 
     public boolean isLoaded() {

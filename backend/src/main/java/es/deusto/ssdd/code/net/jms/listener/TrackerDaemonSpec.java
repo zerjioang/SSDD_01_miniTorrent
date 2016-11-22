@@ -11,13 +11,15 @@ public enum TrackerDaemonSpec {
             return "tracker.handshake";
         }
 
-    }, KEEP_ALIVE_SERVICE {
+    },
+    KEEP_ALIVE_SERVICE {
         @Override
         public String getServiceName() {
             return "tracker.alive";
         }
 
-    }, DATA_SYNC_SERVICE {
+    },
+    DATA_SYNC_SERVICE {
         @Override
         public String getServiceName() {
             return "tracker.sync";

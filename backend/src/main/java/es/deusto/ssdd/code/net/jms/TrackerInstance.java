@@ -1,6 +1,7 @@
 package es.deusto.ssdd.code.net.jms;
 
 import es.deusto.ssdd.code.net.bittorrent.core.TrackerUtil;
+import es.deusto.ssdd.code.net.bittorrent.persistent.PersistenceHandler;
 import es.deusto.ssdd.code.net.gui.view.InterfaceRefresher;
 import es.deusto.ssdd.code.net.gui.view.TrackerWindow;
 import es.deusto.ssdd.code.net.jms.listener.JMSMessageListener;
@@ -62,7 +63,10 @@ public class TrackerInstance implements Comparable {
     //KeepAlive daemon
     private KeepAliveDaemon keepaliveDaemon;
 
+    //tracker instance window
     private TrackerWindow trackerWindow;
+
+    private PersistenceHandler persistenceHandler;
 
     //listener map
     private HashMap<TrackerDaemonSpec, JMSMessageListener> listenerHashMap;
@@ -103,6 +107,9 @@ public class TrackerInstance implements Comparable {
         //init keep alive attributes
         nodeAlive = new AtomicBoolean(NODE_ONLINE_MODE);
         pendingLifetime = new AtomicInteger(MAX_KEEP_ALIVE_TIME);
+
+        //init persistenceHandler
+        persistenceHandler = new PersistenceHandler(trackerId);
 
         //deploy our background services
         deployServices();
@@ -160,8 +167,8 @@ public class TrackerInstance implements Comparable {
         thread(keepaliveDaemon, false);
 
         //start data sync service actors
-        //thread(getListener(DATA_SYNC_SERVICE), false);
-        //thread(getSender(DATA_SYNC_SERVICE), false);
+        thread(getListener(DATA_SYNC_SERVICE), false);
+        thread(getSender(DATA_SYNC_SERVICE), false);
     }
 
     private void setupDaemons() {
