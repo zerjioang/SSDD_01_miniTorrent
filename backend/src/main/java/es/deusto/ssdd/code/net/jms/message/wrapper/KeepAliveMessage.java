@@ -27,7 +27,7 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
     private void addNodeToTrackerNodeList(TrackerInstance thisNode, TrackerInstance remoteNode) {
         if (remoteNode != null) {
             boolean alreadyDiscovered = thisNode.isAlreadyDiscovered(remoteNode);
-            if(!alreadyDiscovered){
+            if (!alreadyDiscovered) {
                 thisNode.addRemoteNode(remoteNode);
             }
             thisNode.updateNodeTable(thisNode.getTrackerNodeList());

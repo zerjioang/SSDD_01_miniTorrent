@@ -33,12 +33,12 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     public void run() {
-        System.out.println(trackerId + " JMS "+getMessageListenerId()+" Daemon listener [STARTED]");
+        System.out.println(trackerId + " JMS " + getMessageListenerId() + " Daemon listener [STARTED]");
         runDaemonListener();
     }
 
     private String getMessageListenerId() {
-        return "[ "+connectionId + "/" + serviceName+ " ]";
+        return "[ " + connectionId + "/" + serviceName + " ]";
     }
 
     private void runDaemonListener() {
@@ -136,7 +136,7 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     public synchronized void onException(JMSException ex) {
-        System.err.println(trackerId+"# JMS Listener ("+getMessageListenerId()+") Daemon Exception occured: " + ex.getMessage());
+        System.err.println(trackerId + "# JMS Listener (" + getMessageListenerId() + ") Daemon Exception occured: " + ex.getMessage());
     }
 
     @Override

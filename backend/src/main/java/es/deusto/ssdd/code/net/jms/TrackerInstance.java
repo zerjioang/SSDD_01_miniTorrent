@@ -40,20 +40,16 @@ public class TrackerInstance implements Comparable {
 
     // secure concurrent modification allowed variable
     private volatile static AtomicInteger counter = new AtomicInteger(0);
-
+    private final String trackerId;
+    //tracker node list
+    private final HashMap<String, TrackerInstance> trackerNodeList;
     //instance attributes
     private String ip;
     private int port;
     private TrackerStatus trackerStatus;
     private InterfaceRefresher refresh;
-    private final String trackerId;
-
     private AtomicBoolean nodeAlive;
     private AtomicInteger pendingLifetime;
-
-    //tracker node list
-    private final HashMap<String, TrackerInstance> trackerNodeList;
-
     //node type
     private TrackerInstanceNodeType nodeType;
 
@@ -76,7 +72,7 @@ public class TrackerInstance implements Comparable {
     public TrackerInstance() {
 
         this.trackerStatus = TrackerStatus.OFFLINE;
-        synchronized(this) {
+        synchronized (this) {
             System.out.println("Running tracker instance " + (counter.incrementAndGet()));
             trackerId = generateId();
         }
@@ -126,15 +122,15 @@ public class TrackerInstance implements Comparable {
         updateNodeTable(this.getTrackerNodeList());
     }
 
+    public static TrackerInstance getNode(String id) {
+        return TrackerInstance.map.get(id);
+    }
+
     private synchronized String generateId() {
         return
                 TrackerUtil.getDeviceMacAddress()
                         + ID_SEPARATOR_TAG
                         + System.nanoTime();
-    }
-
-    public static TrackerInstance getNode(String id) {
-        return TrackerInstance.map.get(id);
     }
 
     public AtomicInteger getPendingLifetime() {
@@ -238,7 +234,7 @@ public class TrackerInstance implements Comparable {
         Iterator it = copiedTrackerList.entrySet().iterator();
         TrackerInstance olderIdInstance = this;
         while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry)it.next();
+            Map.Entry pair = (Map.Entry) it.next();
             TrackerInstance instance = (TrackerInstance) pair.getValue();
             olderIdInstance = this.getOlderTrackerNode(olderIdInstance, instance);
             it.remove();
@@ -342,11 +338,10 @@ public class TrackerInstance implements Comparable {
 
     private boolean removeNodeFromList(TrackerInstance node) {
         TrackerInstance removed = this.trackerNodeList.remove(node.getTrackerId());
-        boolean success = removed!=null;
+        boolean success = removed != null;
         if (success) {
             System.out.println(trackerId + " Successfully removed node " + node.getTrackerId());
-        }
-        else{
+        } else {
             System.out.println(trackerId + " Failed removing node " + node.getTrackerId());
         }
         return success;
@@ -403,7 +398,7 @@ public class TrackerInstance implements Comparable {
     private void sayGoodByeToCluster() {
         try {
             JMSMessageSender sender = this.getSender(TrackerDaemonSpec.HANDSHAKE_SERVICE);
-            if(sender!=null){
+            if (sender != null) {
                 sender.send(MessageCollection.BYE_BYE);
             }
             this.setTrackerStatus(TrackerStatus.OFFLINE);
@@ -422,28 +417,28 @@ public class TrackerInstance implements Comparable {
     }
 
     public boolean isAlreadyDiscovered(TrackerInstance node) {
-        return trackerNodeList.get(node.getTrackerId())!=null;
+        return trackerNodeList.get(node.getTrackerId()) != null;
     }
 
     public void resetRemoteNodeTimeInLocalRegistry(TrackerInstance remoteNode) {
-        System.out.println(this.getTrackerId()+ " resetting "+remoteNode.getTrackerId()+" KEEP_ALIVE value");
+        System.out.println(this.getTrackerId() + " resetting " + remoteNode.getTrackerId() + " KEEP_ALIVE value");
         this.pendingLifetime.set(MAX_KEEP_ALIVE_TIME);
     }
 
-    public String toString(){
-        return nodeType+"::"+getTrackerTimeStamp();
+    public String toString() {
+        return nodeType + "::" + getTrackerTimeStamp();
     }
 
     public boolean hasRollAsigned() {
-        return nodeType!=null;
+        return nodeType != null;
     }
 
-    public boolean isMasterKnown(){
-        return masterNode!=null;
+    public boolean isMasterKnown() {
+        return masterNode != null;
     }
 
     public void updateNodeTable(HashMap<String, TrackerInstance> remoteNodeList) {
-        if(refresh!=null){
+        if (refresh != null) {
             refresh.addTrackerNodeToTable(remoteNodeList);
         }
     }
@@ -457,7 +452,7 @@ public class TrackerInstance implements Comparable {
     }
 
     public void removeDeadNodesFromList(ArrayList<TrackerInstance> instancesToRemove) {
-        for(TrackerInstance node : instancesToRemove){
+        for (TrackerInstance node : instancesToRemove) {
             this.trackerNodeList.remove(node);
         }
     }

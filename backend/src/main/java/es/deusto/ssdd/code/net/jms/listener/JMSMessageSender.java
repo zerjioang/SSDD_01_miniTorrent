@@ -38,7 +38,7 @@ public class JMSMessageSender implements Runnable {
     }
 
     public void run() {
-        System.out.println(trackerId + " JMS "+getMessageSenderId()+" Daemon sender [STARTED]");
+        System.out.println(trackerId + " JMS " + getMessageSenderId() + " Daemon sender [STARTED]");
         try {
             // Create a Connection
             connection = createConnection(connectionId);
@@ -72,7 +72,7 @@ public class JMSMessageSender implements Runnable {
     }
 
     private String getMessageSenderId() {
-        return "[ "+connectionId + "/" + serviceName+ " ]";
+        return "[ " + connectionId + "/" + serviceName + " ]";
     }
 
     private void triggerMessageSendAction(ActiveMQObjectMessage message) {

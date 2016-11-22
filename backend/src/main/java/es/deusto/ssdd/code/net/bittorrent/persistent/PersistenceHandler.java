@@ -14,7 +14,7 @@ public class PersistenceHandler {
     private Connection c;
 
     public PersistenceHandler(String trackerId) {
-        System.out.println(trackerId+" loading persistence handler");
+        System.out.println(trackerId + " loading persistence handler");
         this.loaded = false;
         init(trackerId);
     }
@@ -23,8 +23,8 @@ public class PersistenceHandler {
         c = null;
         try {
             Class.forName(DRIVER_NAME);
-            String databaseName = trackerId+".db";
-            c = DriverManager.getConnection(DATABASE_PATH+databaseName);
+            String databaseName = trackerId + ".db";
+            c = DriverManager.getConnection(DATABASE_PATH + databaseName);
             System.out.println("Opened database successfully");
             this.loaded = true;
         } catch (Exception e) {

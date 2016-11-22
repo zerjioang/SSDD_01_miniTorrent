@@ -9,14 +9,14 @@ import java.util.ArrayList;
 /**
  * Created by .local on 18/11/2016.
  */
-public class KeepAliveDaemon implements Runnable{
+public class KeepAliveDaemon implements Runnable {
 
     public static final int KEEP_ALIVE_FREQUENCY_MS = 2000;
 
     private final TrackerInstance daemonOwner;
 
-    public KeepAliveDaemon(TrackerInstance daemonOwner) throws IllegalArgumentException{
-        if(daemonOwner==null){
+    public KeepAliveDaemon(TrackerInstance daemonOwner) throws IllegalArgumentException {
+        if (daemonOwner == null) {
             throw new IllegalArgumentException("Tracker instance owner of a keep alive daemon cannot be null");
         }
         this.daemonOwner = daemonOwner;
@@ -24,7 +24,7 @@ public class KeepAliveDaemon implements Runnable{
 
     @Override
     public void run() {
-        System.out.println(daemonOwner.getTrackerId()+" KEEP_ALIVE Daemon ACTIVE");
+        System.out.println(daemonOwner.getTrackerId() + " KEEP_ALIVE Daemon ACTIVE");
         try {
             while (daemonOwner.isAlive()) {
                 sendKeepAliveMessage();
@@ -33,11 +33,11 @@ public class KeepAliveDaemon implements Runnable{
         } catch (JMSException e) {
             e.printStackTrace();
         }
-        System.out.println(daemonOwner.getTrackerId()+" KEEP_ALIVE Daemon STOPPED");
+        System.out.println(daemonOwner.getTrackerId() + " KEEP_ALIVE Daemon STOPPED");
     }
 
     private void updateOtherNodesKeepAliveStatus() {
-        System.out.println(daemonOwner.getTrackerId()+" updating tracker node list keep alive status");
+        System.out.println(daemonOwner.getTrackerId() + " updating tracker node list keep alive status");
 
         ArrayList<TrackerInstance> instancesToRemove = new ArrayList<>();
 
@@ -48,7 +48,7 @@ public class KeepAliveDaemon implements Runnable{
                 instance.decreasePendingLifeTime();
             }
         }
-        if(!instancesToRemove.isEmpty()){
+        if (!instancesToRemove.isEmpty()) {
             daemonOwner.removeDeadNodesFromList(instancesToRemove);
         }
     }
@@ -56,6 +56,9 @@ public class KeepAliveDaemon implements Runnable{
     private void sendKeepAliveMessage() throws JMSException {
         JMSMessageSender sender = daemonOwner.getSender(TrackerDaemonSpec.KEEP_ALIVE_SERVICE);
         sender.send(MessageCollection.KEEP_ALIVE);
-        try {Thread.sleep(KEEP_ALIVE_FREQUENCY_MS);} catch (InterruptedException e) {}
+        try {
+            Thread.sleep(KEEP_ALIVE_FREQUENCY_MS);
+        } catch (InterruptedException e) {
+        }
     }
 }

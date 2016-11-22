@@ -82,7 +82,7 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         panel.add(scrollPane_1, BorderLayout.CENTER);
 
         activeTrackersTable = new JTable();
-        activeTrackersTableModel =  new DefaultTableModel();
+        activeTrackersTableModel = new DefaultTableModel();
         activeTrackersTableModel.setColumnIdentifiers(
                 new String[]{
                         "ID", "Tracker IP", "Tracker port", "Node type", "Last keep alive"
@@ -232,28 +232,27 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
     public void addTrackerNodeToTable(HashMap<String, TrackerInstance> remoteNodeList) {
         // add row dynamically into the table
         //columns: "ID", "Tracker IP", "Tracker port", "Node type", "Last keep alive"
-        try{
+        try {
             emptyActiveTrackersTable();
 
             Iterator it = remoteNodeList.entrySet().iterator();
             while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry)it.next();
+                Map.Entry pair = (Map.Entry) it.next();
                 TrackerInstance remoteNode = (TrackerInstance) pair.getValue();
                 activeTrackersTableModel.addRow(
-                        new Object[] {
+                        new Object[]{
                                 remoteNode.getTrackerId(), remoteNode.getIp(), remoteNode.getPort(), remoteNode.getNodeType().toString(), remoteNode.getLastKeepAlive()
                         }
                 );
                 it.remove();
             }
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     private void emptyActiveTrackersTable() {
-        while(activeTrackersTableModel.getRowCount()!=0){
+        while (activeTrackersTableModel.getRowCount() != 0) {
             activeTrackersTableModel.removeRow(0);
         }
     }

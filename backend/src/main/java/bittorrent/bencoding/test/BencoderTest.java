@@ -47,7 +47,7 @@ public class BencoderTest {
         System.out.println("'\n- Unbencoded String: " + bencoder.unbencodeString(encoded));
 
 		/*
-		 * Integer
+         * Integer
 		 */
         encoded = bencoder.bencodeInteger(new Integer(-123456));
         System.out.print("\n- Bencoded Integer: '");
