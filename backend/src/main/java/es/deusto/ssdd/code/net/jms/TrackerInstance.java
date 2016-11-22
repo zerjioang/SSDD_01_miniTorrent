@@ -13,6 +13,8 @@ import es.deusto.ssdd.code.net.jms.model.TrackerInstanceNodeType;
 import es.deusto.ssdd.code.net.jms.model.TrackerStatus;
 
 import javax.jms.JMSException;
+import java.io.*;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -482,5 +484,41 @@ public class TrackerInstance implements Comparable {
 
         TrackerInstance that = (TrackerInstance) o;
         return trackerId.equals(that.trackerId);
+    }
+
+    public void requestDatabaseClone(TrackerInstance remoteNode) {
+        //todo open a tcp connection against remote node for .sqlite file tranfer
+        try{
+            String remoteIp = remoteNode.getIp();
+            int remotePort = remoteNode.getPort();
+            Socket socket = new Socket(remoteIp, remotePort);
+
+            //read stream
+            DataInputStream in = new DataInputStream(socket.getInputStream());
+            int size = Integer.parseInt(in.readLine().split(": ")[1]);
+            byte[] item = new byte[size];
+            for(int i = 0; i < size; i++)
+                item[i] = in.readByte();
+
+            //write to disk
+            String fileName = getTrackerDatabaseName();
+            File file = new File(fileName);
+            FileOutputStream fos = new FileOutputStream(file);
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
+            bos.write(item);
+
+            bos.close();
+            fos.close();
+
+            in.close();
+            socket.close();
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    private String getTrackerDatabaseName() {
+        return this.trackerId+".db";
     }
 }
