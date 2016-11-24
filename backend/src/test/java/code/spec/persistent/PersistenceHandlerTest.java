@@ -15,7 +15,6 @@ public class PersistenceHandlerTest {
 
     @Before
     public void load() {
-        handler = PersistenceHandler.getInstance();
     }
 
     @Test
