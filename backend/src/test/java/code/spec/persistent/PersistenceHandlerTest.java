@@ -1,6 +1,6 @@
 package code.spec.persistent;
 
-import es.deusto.ssdd.code.net.bittorrent.persistent.PersistenceHandler;
+import es.deusto.ssdd.bittorrent.persistent.PersistenceHandler;
 import org.junit.Before;
 import org.junit.Test;
 

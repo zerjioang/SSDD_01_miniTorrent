@@ -1,6 +1,6 @@
 package code.spec.core;
 
-import es.deusto.ssdd.code.net.bittorrent.core.TrackerUtil;
+import es.deusto.ssdd.bittorrent.core.TrackerUtil;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
