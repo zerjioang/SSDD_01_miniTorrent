@@ -2,6 +2,7 @@ package es.deusto.ssdd.jms.listener;
 
 import es.deusto.ssdd.jms.message.IJMSMessage;
 import es.deusto.ssdd.jms.message.MessageCollection;
+import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.command.ActiveMQObjectMessage;
 

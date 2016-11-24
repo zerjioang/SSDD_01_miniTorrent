@@ -7,8 +7,8 @@ import es.deusto.ssdd.gui.view.TrackerWindow;
 import es.deusto.ssdd.jms.listener.JMSMessageListener;
 import es.deusto.ssdd.jms.listener.JMSMessageSender;
 import es.deusto.ssdd.jms.listener.KeepAliveDaemon;
-import es.deusto.ssdd.jms.listener.TrackerDaemonSpec;
 import es.deusto.ssdd.jms.message.MessageCollection;
+import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 import es.deusto.ssdd.jms.model.TrackerInstanceNodeType;
 import es.deusto.ssdd.jms.model.TrackerStatus;
 
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static es.deusto.ssdd.jms.listener.TrackerDaemonSpec.*;
+import static es.deusto.ssdd.jms.model.TrackerDaemonSpec.*;
 
 /**
  * Created by .local on 14/11/2016.
