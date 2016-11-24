@@ -1,4 +1,0 @@
-/**
- * @author .local
- */
-package desarrollo;
