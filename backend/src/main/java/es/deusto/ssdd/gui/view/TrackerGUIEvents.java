@@ -31,6 +31,8 @@ public enum TrackerGUIEvents {
         public ActionListener event(TrackerWindow window) {
             return actionEvent -> {
                 System.out.println("Menu exit event detected");
+                forceTrackerStop(window);
+                window.dispose();
             };
         }
     }, MENU_FORCE_STOP {
@@ -38,26 +40,30 @@ public enum TrackerGUIEvents {
         public ActionListener event(TrackerWindow window) {
             return actionEvent -> {
                 System.out.println("Menu force stop event detected");
-                TrackerInstance instance = window.getInstance();
-                if (instance != null) {
-                    if (instance.isMaster()) {
-                        int result = JOptionPane.showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker Master?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
-                        executeOnResult(window, result);
-                    } else {
-                        int result = showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
-                        executeOnResult(window, result);
-                    }
-                }
+                forceTrackerStop(window);
             };
-        }
-
-        private void executeOnResult(TrackerWindow window, int result) {
-            if (result == JOptionPane.OK_OPTION) {
-                window.getInstance().stopNode();
-                window.updateTrackerStatus(TrackerStatus.OFFLINE);
-            }
         }
     };
 
     public abstract ActionListener event(TrackerWindow window);
+
+    private static void forceTrackerStop(TrackerWindow window) {
+        TrackerInstance instance = window.getInstance();
+        if (instance != null) {
+            if (instance.isMaster()) {
+                int result = JOptionPane.showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker Master?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
+                executeOnResult(window, result);
+            } else {
+                int result = showConfirmDialog(window, "¿Estas seguro de que quieres parar el tracker?", "Forzar parada", JOptionPane.INFORMATION_MESSAGE);
+                executeOnResult(window, result);
+            }
+        }
+    }
+
+    private static void executeOnResult(TrackerWindow window, int result) {
+        if (result == JOptionPane.OK_OPTION) {
+            window.getInstance().stopNode();
+            window.updateTrackerStatus(TrackerStatus.OFFLINE);
+        }
+    }
 }

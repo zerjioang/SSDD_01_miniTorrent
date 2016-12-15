@@ -43,4 +43,8 @@ public class TrackerUDPServer {
             e.printStackTrace();
         }
     }
+
+    public int getListeningPort() {
+        return port;
+    }
 }

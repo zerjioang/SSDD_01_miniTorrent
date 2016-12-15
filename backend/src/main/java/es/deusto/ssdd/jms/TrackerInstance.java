@@ -83,7 +83,6 @@ public class TrackerInstance implements Comparable {
             trackerId = generateId();
         }
         ip = TrackerUtil.getIP();
-        port = 8000;
         System.out.println("Tracker ID: " + trackerId);
 
         //add to instance map. only for development with multinodes in local mode
@@ -116,7 +115,6 @@ public class TrackerInstance implements Comparable {
         //deploy background udp server
         deployUDP();
 
-        /*
         //deploy our background services
         deployServices();
 
@@ -130,12 +128,12 @@ public class TrackerInstance implements Comparable {
 
         //add node itself to window
         updateNodeTable(this.getTrackerNodeList());
-        */
     }
 
     private void deployUDP() {
         udpServer = new TrackerUDPServer(this);
         udpServer.backgroundDispatch();
+        this.port = udpServer.getListeningPort();
     }
 
     public static TrackerInstance getNode(String id) {

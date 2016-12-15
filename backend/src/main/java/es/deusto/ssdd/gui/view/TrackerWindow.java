@@ -34,7 +34,7 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         setSystemTheme();
 
         setTitle("Admin window");
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setBounds(100, 100, 450, 300);
         setMinimumSize(new Dimension(800, 400));
 
@@ -49,7 +49,7 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         labelTrackerIp = new JLabel("127.0.0.1");
         panelTop.add(labelTrackerIp);
 
-        JLabel lblTrackerPort = new JLabel("Tracker port:");
+        JLabel lblTrackerPort = new JLabel("Tracker UDP port:");
         panelTop.add(lblTrackerPort);
 
         labelTrackerPort = new JLabel("1234");
@@ -137,22 +137,8 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         //set window centered
         setLocationRelativeTo(null);
 
-        //
+        //focus listener
         addWindowFocusListener(this);
-    }
-
-    /**
-     * Launch the application.
-     */
-    public static void main(String[] args) {
-        EventQueue.invokeLater(() -> {
-            try {
-                TrackerWindow frame = new TrackerWindow(null);
-                frame.setVisible(true);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
     }
 
     private JPanel createTopBar() {
@@ -271,5 +257,23 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
     @Override
     public void windowLostFocus(WindowEvent windowEvent) {
 
+    }
+
+    private TrackerWindow getThisWindow() {
+        return this;
+    }
+
+    /**
+     * Launch the application.
+     */
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                TrackerWindow frame = new TrackerWindow(null);
+                frame.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 }
