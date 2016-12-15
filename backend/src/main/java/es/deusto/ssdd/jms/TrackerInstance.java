@@ -2,6 +2,7 @@ package es.deusto.ssdd.jms;
 
 import es.deusto.ssdd.bittorrent.core.TrackerUtil;
 import es.deusto.ssdd.bittorrent.persistent.PersistenceHandler;
+import es.deusto.ssdd.code.udp.TrackerUDPServer;
 import es.deusto.ssdd.gui.view.InterfaceRefresher;
 import es.deusto.ssdd.gui.view.TrackerWindow;
 import es.deusto.ssdd.jms.listener.JMSMessageListener;
@@ -34,7 +35,7 @@ public class TrackerInstance implements Comparable {
     private static final String ACTIVE_MQ_SERVER = "tcp://localhost:61616";
     private static final int THIS_IS_OLDER = 1;
     private static final int TIMESTAMP_VALUE = 1;
-    private static final String ID_SEPARATOR_TAG = ">";
+    private static final String ID_SEPARATOR_TAG = "_";
     private static final ConcurrentHashMap<String, TrackerInstance> map = new ConcurrentHashMap<>();
     private static final int MAX_KEEP_ALIVE_TIME = 5;
     private static final boolean NODE_OFFLINE_MODE = false;
@@ -63,6 +64,9 @@ public class TrackerInstance implements Comparable {
 
     //tracker instance window
     private TrackerWindow trackerWindow;
+
+    //tracker udp server
+    private TrackerUDPServer udpServer;
 
     private PersistenceHandler persistenceHandler;
 
@@ -109,6 +113,10 @@ public class TrackerInstance implements Comparable {
         //init persistenceHandler
         persistenceHandler = new PersistenceHandler(trackerId);
 
+        //deploy background udp server
+        deployUDP();
+
+        /*
         //deploy our background services
         deployServices();
 
@@ -122,6 +130,12 @@ public class TrackerInstance implements Comparable {
 
         //add node itself to window
         updateNodeTable(this.getTrackerNodeList());
+        */
+    }
+
+    private void deployUDP() {
+        udpServer = new TrackerUDPServer(this);
+        udpServer.backgroundDispatch();
     }
 
     public static TrackerInstance getNode(String id) {
