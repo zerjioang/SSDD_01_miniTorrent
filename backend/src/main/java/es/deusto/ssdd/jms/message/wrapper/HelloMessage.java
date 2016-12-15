@@ -26,6 +26,8 @@ public class HelloMessage implements Serializable, IJMSMessage {
         }
         thisNode.beginMasterElectionProcess();
         thisNode._debug_election_result();
+        //when a new hello_world message is received, we also need to send a message back of type clone database
+        thisNode.sendDatabaseBack(remoteNode);
     }
 
     @Override

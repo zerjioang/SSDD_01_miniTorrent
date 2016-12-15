@@ -110,7 +110,7 @@ public class TrackerInstance implements Comparable {
         pendingLifetime = new AtomicInteger(MAX_KEEP_ALIVE_TIME);
 
         //init persistenceHandler
-        persistenceHandler = new PersistenceHandler(trackerId);
+        persistenceHandler = new PersistenceHandler(this);
 
         //deploy background udp server
         deployUDP();
@@ -130,14 +130,14 @@ public class TrackerInstance implements Comparable {
         updateNodeTable(this.getTrackerNodeList());
     }
 
+    public static TrackerInstance getNode(String id) {
+        return TrackerInstance.map.get(id);
+    }
+
     private void deployUDP() {
         udpServer = new TrackerUDPServer(this);
         udpServer.backgroundDispatch();
         this.port = udpServer.getListeningPort();
-    }
-
-    public static TrackerInstance getNode(String id) {
-        return TrackerInstance.map.get(id);
     }
 
     private synchronized String generateId() {
@@ -193,13 +193,13 @@ public class TrackerInstance implements Comparable {
     private void setupSenderDaemons() {
         //populate maps
         senderHashMap.put(HANDSHAKE_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
+                new JMSMessageSender(this, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
         );
         senderHashMap.put(KEEP_ALIVE_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
+                new JMSMessageSender(this, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
         );
         senderHashMap.put(DATA_SYNC_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
+                new JMSMessageSender(this, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
         );
     }
 
@@ -407,6 +407,7 @@ public class TrackerInstance implements Comparable {
         sayGoodByeToCluster();
         stopSendingKeepAlives();
         // TODO stop all running background threads
+        //delete
     }
 
     private void sayGoodByeToCluster() {
@@ -531,6 +532,26 @@ public class TrackerInstance implements Comparable {
     }
 
     private String getTrackerDatabaseName() {
-        return this.trackerId+".db";
+        return this.persistenceHandler.getDatabaseName();
+    }
+
+    public byte[] getDatabaseArray() {
+        return this.persistenceHandler.getDatabaseArray();
+    }
+
+    //send current database to remote node
+    public void sendDatabaseBack(TrackerInstance remoteNode) {
+        try {
+            MessageCollection message = MessageCollection.DATABASE_CLONE;
+            message.setRemoteNode(remoteNode);
+            this.getSender(TrackerDaemonSpec.DATA_SYNC_SERVICE)
+                    .send(message);
+        } catch (JMSException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void overwriteLocalDatabase(byte[] binaryContent) {
+        this.persistenceHandler.overwrite(binaryContent);
     }
 }
