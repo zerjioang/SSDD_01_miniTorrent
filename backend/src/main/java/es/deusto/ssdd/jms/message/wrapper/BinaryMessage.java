@@ -36,7 +36,7 @@ public class BinaryMessage implements Serializable, IJMSMessage {
     }
 
     @Override
-    public void onBroadcastEvent() {
+    public void onBroadcastEvent(String currentNodeId) {
         System.out.println(sourceTrackerId + " Tracker data sync message broadcast event here");
     }
 

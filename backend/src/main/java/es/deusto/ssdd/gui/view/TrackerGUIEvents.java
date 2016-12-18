@@ -45,8 +45,6 @@ public enum TrackerGUIEvents {
         }
     };
 
-    public abstract ActionListener event(TrackerWindow window);
-
     private static void forceTrackerStop(TrackerWindow window) {
         TrackerInstance instance = window.getInstance();
         if (instance != null) {
@@ -62,8 +60,10 @@ public enum TrackerGUIEvents {
 
     private static void executeOnResult(TrackerWindow window, int result) {
         if (result == JOptionPane.OK_OPTION) {
-            window.getInstance().stopNode();
+            window.getInstance().sayGoodByeToCluster();
             window.updateTrackerStatus(TrackerStatus.OFFLINE);
         }
     }
+
+    public abstract ActionListener event(TrackerWindow window);
 }

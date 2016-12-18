@@ -31,7 +31,7 @@ public class HelloMessage implements Serializable, IJMSMessage {
     }
 
     @Override
-    public void onBroadcastEvent() {
+    public void onBroadcastEvent(String currentNodeId) {
     }
 
     @Override

@@ -14,14 +14,11 @@ import es.deusto.ssdd.jms.model.TrackerInstanceNodeType;
 import es.deusto.ssdd.jms.model.TrackerStatus;
 
 import javax.jms.JMSException;
-import java.io.*;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static es.deusto.ssdd.jms.model.TrackerDaemonSpec.*;
@@ -51,7 +48,7 @@ public class TrackerInstance implements Comparable {
     private int port;
     private TrackerStatus trackerStatus;
     private InterfaceRefresher refresh;
-    private AtomicBoolean nodeAlive;
+    private boolean nodeAlive;
     private AtomicInteger pendingLifetime;
     //node type
     private TrackerInstanceNodeType nodeType;
@@ -106,7 +103,7 @@ public class TrackerInstance implements Comparable {
         nodeType = TrackerInstanceNodeType.MASTER;
 
         //init keep alive attributes
-        nodeAlive = new AtomicBoolean(NODE_ONLINE_MODE);
+        nodeAlive = NODE_ONLINE_MODE;
         pendingLifetime = new AtomicInteger(MAX_KEEP_ALIVE_TIME);
 
         //init persistenceHandler
@@ -155,11 +152,11 @@ public class TrackerInstance implements Comparable {
         this.pendingLifetime = pendingLifetime;
     }
 
-    public AtomicBoolean getNodeAlive() {
+    public boolean getNodeAlive() {
         return nodeAlive;
     }
 
-    public void setNodeAlive(AtomicBoolean nodeAlive) {
+    public void setNodeAlive(boolean nodeAlive) {
         this.nodeAlive = nodeAlive;
     }
 
@@ -173,12 +170,12 @@ public class TrackerInstance implements Comparable {
         thread(getListener(KEEP_ALIVE_SERVICE), false);
         thread(getSender(KEEP_ALIVE_SERVICE), false);
 
-        //start keep alive daemon
-        thread(keepaliveDaemon, false);
-
         //start data sync service actors
         thread(getListener(DATA_SYNC_SERVICE), false);
         thread(getSender(DATA_SYNC_SERVICE), false);
+
+        //start keep alive daemon
+        thread(keepaliveDaemon, false);
     }
 
     private void setupDaemons() {
@@ -403,14 +400,7 @@ public class TrackerInstance implements Comparable {
         return nodeType == TrackerInstanceNodeType.MASTER;
     }
 
-    public void stopNode() {
-        sayGoodByeToCluster();
-        stopSendingKeepAlives();
-        // TODO stop all running background threads
-        //delete
-    }
-
-    private void sayGoodByeToCluster() {
+    public void sayGoodByeToCluster() {
         try {
             JMSMessageSender sender = this.getSender(HANDSHAKE_SERVICE);
             if (sender != null) {
@@ -424,7 +414,8 @@ public class TrackerInstance implements Comparable {
 
     private void stopSendingKeepAlives() {
         //stop sending keep alives
-        this.nodeAlive.set(NODE_OFFLINE_MODE);
+        this.nodeAlive = NODE_OFFLINE_MODE;
+        //this.keepaliveDaemon
     }
 
     public void setRefresh(InterfaceRefresher refresh) {
@@ -487,7 +478,7 @@ public class TrackerInstance implements Comparable {
     }
 
     public boolean isAlive() {
-        return this.nodeAlive.get();
+        return this.nodeAlive;
     }
 
     @Override
@@ -497,38 +488,6 @@ public class TrackerInstance implements Comparable {
 
         TrackerInstance that = (TrackerInstance) o;
         return trackerId.equals(that.trackerId);
-    }
-
-    public void requestDatabaseClone(TrackerInstance remoteNode) {
-        //todo open a tcp connection against remote node for .sqlite file tranfer
-        try{
-            String remoteIp = remoteNode.getIp();
-            int remotePort = remoteNode.getPort();
-            Socket socket = new Socket(remoteIp, remotePort);
-
-            //read stream
-            DataInputStream in = new DataInputStream(socket.getInputStream());
-            int size = Integer.parseInt(in.readLine().split(": ")[1]);
-            byte[] item = new byte[size];
-            for(int i = 0; i < size; i++)
-                item[i] = in.readByte();
-
-            //write to disk
-            String fileName = getTrackerDatabaseName();
-            File file = new File(fileName);
-            FileOutputStream fos = new FileOutputStream(file);
-            BufferedOutputStream bos = new BufferedOutputStream(fos);
-            bos.write(item);
-
-            bos.close();
-            fos.close();
-
-            in.close();
-            socket.close();
-        }
-        catch (IOException e){
-            e.printStackTrace();
-        }
     }
 
     private String getTrackerDatabaseName() {
@@ -553,5 +512,14 @@ public class TrackerInstance implements Comparable {
 
     public void overwriteLocalDatabase(byte[] binaryContent) {
         this.persistenceHandler.overwrite(binaryContent);
+    }
+
+    public void stopNode() {
+        //stop sending keep alives
+        stopSendingKeepAlives();
+        //stop UDP server
+        udpServer.stopService();
+        //delete local database
+        persistenceHandler.deleteDatabase();
     }
 }

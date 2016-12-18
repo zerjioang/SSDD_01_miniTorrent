@@ -1,5 +1,6 @@
 package es.deusto.ssdd.code.udp;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 
 /**
@@ -28,9 +29,17 @@ public class UDPThread extends Thread {
                 thread.start();
                 // soc.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                System.err.println(e.getLocalizedMessage());
             }
         }
+        //service stopped. close opened streams
+        try {
+            soc.close();
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+        System.out.println("UDP THread stopped");
     }
 
     public boolean isActive() {

@@ -18,7 +18,7 @@ public interface IJMSMessage {
      * This code is executed in source node
      * @param
      */
-    void onBroadcastEvent();
+    void onBroadcastEvent(String currentNodeId);
 
     String getSourceTrackerId();
 

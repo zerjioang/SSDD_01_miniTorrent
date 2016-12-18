@@ -87,7 +87,7 @@ public class JMSMessageSender implements Runnable {
                     if (o != null) {
                         IJMSMessage m = (IJMSMessage) o;
                         System.out.println(trackerId + " >> SEND >> " + getMessageSenderId() + " >> " + m.getPrintable());
-                        m.onBroadcastEvent();
+                        m.onBroadcastEvent(trackerId);
                     }
                 } catch (JMSException e) {
                     e.printStackTrace();

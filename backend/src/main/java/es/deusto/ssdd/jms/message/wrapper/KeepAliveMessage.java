@@ -41,7 +41,7 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
     }
 
     @Override
-    public void onBroadcastEvent() {
+    public void onBroadcastEvent(String currentNodeId) {
     }
 
     @Override

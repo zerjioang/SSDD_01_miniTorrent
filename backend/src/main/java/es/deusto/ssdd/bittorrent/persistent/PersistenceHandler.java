@@ -88,9 +88,24 @@ public class PersistenceHandler {
                 System.out.println(tracker.getTrackerId() + " Something happen when deleting. Could not complete Database Overwrite");
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println(e.getLocalizedMessage());
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println(e.getLocalizedMessage());
+        }
+    }
+
+    public void deleteDatabase() {
+        System.out.println(tracker.getTrackerId() + " DELETE DATABASE");
+        try {
+            //close connection
+            connection.close();
+            //delete file
+            boolean deleted = new File(databaseName).delete();
+            if (deleted) {
+                System.out.println(tracker.getTrackerId() + " Database file deleted");
+            }
+        } catch (SQLException e) {
+            System.err.println(e.getLocalizedMessage());
         }
     }
 }

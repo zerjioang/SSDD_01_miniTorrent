@@ -15,6 +15,7 @@ public class TrackerUDPServer {
     private final TrackerInstance trackerInstance;
     private int port;
     private UDPThread handler;
+    private ServerSocket welcomeSocket;
 
     public TrackerUDPServer(TrackerInstance trackerInstance) {
         this.trackerInstance = trackerInstance;
@@ -28,7 +29,7 @@ public class TrackerUDPServer {
 
     private void startServer() {
         try {
-            ServerSocket welcomeSocket = new ServerSocket(port);
+            welcomeSocket = new ServerSocket(port);
             System.out.println("socket online");
             System.out.println("Waiting for clients to connect...");
 
@@ -46,5 +47,18 @@ public class TrackerUDPServer {
 
     public int getListeningPort() {
         return port;
+    }
+
+    public void stopService() {
+        //stop the main listener thread
+        this.handler.setActive(false);
+        //close the socket
+        try {
+            welcomeSocket.close();
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+        System.out.println(trackerInstance.getTrackerId() + " UDP Server stopped");
     }
 }
