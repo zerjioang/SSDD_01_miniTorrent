@@ -64,8 +64,7 @@ public class PersistenceHandler {
 
     public byte[] getDatabaseArray() {
         try {
-            byte[] data = Files.readAllBytes(Paths.get(databaseName));
-            return data;
+            return Files.readAllBytes(Paths.get(databaseName));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -87,9 +86,7 @@ public class PersistenceHandler {
             } else {
                 System.out.println(tracker.getTrackerId() + " Something happen when deleting. Could not complete Database Overwrite");
             }
-        } catch (SQLException e) {
-            System.err.println(e.getLocalizedMessage());
-        } catch (IOException e) {
+        } catch (SQLException | IOException e) {
             System.err.println(e.getLocalizedMessage());
         }
     }
@@ -104,6 +101,14 @@ public class PersistenceHandler {
             if (deleted) {
                 System.out.println(tracker.getTrackerId() + " Database file deleted");
             }
+        } catch (SQLException e) {
+            System.err.println(e.getLocalizedMessage());
+        }
+    }
+
+    public void sync(String query) {
+        try {
+            connection.createStatement().execute(query);
         } catch (SQLException e) {
             System.err.println(e.getLocalizedMessage());
         }

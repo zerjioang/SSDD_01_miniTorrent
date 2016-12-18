@@ -23,9 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static es.deusto.ssdd.jms.model.TrackerDaemonSpec.*;
 
-/**
- * Created by .local on 14/11/2016.
- */
 public class TrackerInstance implements Comparable {
 
     //constants
@@ -241,7 +238,7 @@ public class TrackerInstance implements Comparable {
     }
 
     private TrackerInstance getOlderTrackerInstance() {
-        Map<String, TrackerInstance> copiedTrackerList = (Map<String, TrackerInstance>) trackerNodeList.clone();
+        Map<String, TrackerInstance> copiedTrackerList = getTrackerNodeList();
         Iterator it = copiedTrackerList.entrySet().iterator();
         TrackerInstance olderIdInstance = this;
         while (it.hasNext()) {
@@ -307,7 +304,7 @@ public class TrackerInstance implements Comparable {
         return senderHashMap.get(spec);
     }
 
-    public JMSMessageListener getListener(TrackerDaemonSpec spec) {
+    private JMSMessageListener getListener(TrackerDaemonSpec spec) {
         return listenerHashMap.get(spec);
     }
 
@@ -319,7 +316,7 @@ public class TrackerInstance implements Comparable {
         return nodeType;
     }
 
-    public void setNodeType(TrackerInstanceNodeType nodeType) {
+    private void setNodeType(TrackerInstanceNodeType nodeType) {
         this.nodeType = nodeType;
     }
 
@@ -392,7 +389,7 @@ public class TrackerInstance implements Comparable {
         return trackerStatus;
     }
 
-    public void setTrackerStatus(TrackerStatus trackerStatus) {
+    private void setTrackerStatus(TrackerStatus trackerStatus) {
         this.trackerStatus = trackerStatus;
     }
 
@@ -418,7 +415,7 @@ public class TrackerInstance implements Comparable {
         //this.keepaliveDaemon
     }
 
-    public void setRefresh(InterfaceRefresher refresh) {
+    private void setRefresh(InterfaceRefresher refresh) {
         this.refresh = refresh;
     }
 
@@ -458,9 +455,7 @@ public class TrackerInstance implements Comparable {
     }
 
     public void removeDeadNodesFromList(ArrayList<TrackerInstance> instancesToRemove) {
-        for (TrackerInstance node : instancesToRemove) {
-            this.trackerNodeList.remove(node);
-        }
+        instancesToRemove.forEach(this.trackerNodeList::remove);
     }
 
     public boolean isKeepAliveCountDead() {
@@ -521,5 +516,10 @@ public class TrackerInstance implements Comparable {
         udpServer.stopService();
         //delete local database
         persistenceHandler.deleteDatabase();
+    }
+
+    public void syncData(String query) {
+        System.out.println(trackerId + " Synchronization received");
+        persistenceHandler.sync(query);
     }
 }
