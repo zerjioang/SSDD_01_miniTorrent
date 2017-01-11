@@ -141,6 +141,20 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         addWindowFocusListener(this);
     }
 
+    /**
+     * Launch the application.
+     */
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                TrackerWindow frame = new TrackerWindow(null);
+                frame.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     private JPanel createTopBar() {
         JMenuBar menuBar = new JMenuBar();
         setJMenuBar(menuBar);
@@ -261,19 +275,5 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
 
     private TrackerWindow getThisWindow() {
         return this;
-    }
-
-    /**
-     * Launch the application.
-     */
-    public static void main(String[] args) {
-        EventQueue.invokeLater(() -> {
-            try {
-                TrackerWindow frame = new TrackerWindow(null);
-                frame.setVisible(true);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
     }
 }

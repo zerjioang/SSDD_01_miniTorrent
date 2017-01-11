@@ -2,7 +2,6 @@ package es.deusto.ssdd.jms;
 
 import es.deusto.ssdd.bittorrent.core.TrackerUtil;
 import es.deusto.ssdd.bittorrent.persistent.PersistenceHandler;
-import es.deusto.ssdd.code.udp.TrackerUDPServer;
 import es.deusto.ssdd.gui.view.InterfaceRefresher;
 import es.deusto.ssdd.gui.view.TrackerWindow;
 import es.deusto.ssdd.jms.listener.JMSMessageListener;
@@ -12,8 +11,10 @@ import es.deusto.ssdd.jms.message.MessageCollection;
 import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 import es.deusto.ssdd.jms.model.TrackerInstanceNodeType;
 import es.deusto.ssdd.jms.model.TrackerStatus;
+import es.deusto.ssdd.udp.TrackerUDPServer;
 
 import javax.jms.JMSException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -70,7 +71,6 @@ public class TrackerInstance implements Comparable {
     private HashMap<TrackerDaemonSpec, JMSMessageSender> senderHashMap;
 
     public TrackerInstance() {
-
         this.trackerStatus = TrackerStatus.OFFLINE;
         synchronized (this) {
             System.out.println("Running tracker instance " + (counter.incrementAndGet()));
@@ -87,14 +87,19 @@ public class TrackerInstance implements Comparable {
 
         setupDaemons();
 
+        //todo delete after 3rd delivery
+        //deploy background udp server
+        try {
+            deployUDP();
+        } catch (IOException e) {
+            System.err.println(e.getLocalizedMessage());
+        }
+
         //add itself to tracker node list
         trackerNodeList.put(this.getTrackerId(), this);
 
         //init master node
         masterNode = null;
-
-        //init keep alive daemon
-        keepaliveDaemon = new KeepAliveDaemon(this);
 
         //init node type
         nodeType = TrackerInstanceNodeType.MASTER;
@@ -105,31 +110,14 @@ public class TrackerInstance implements Comparable {
 
         //init persistenceHandler
         persistenceHandler = new PersistenceHandler(this);
-
-        //deploy background udp server
-        deployUDP();
-
-        //deploy our background services
-        deployServices();
-
-        //show tracker window
-        showTrackerWindow();
-
-        this.trackerStatus = TrackerStatus.ONLINE;
-        if (this.refresh != null) {
-            this.refresh.updateTrackerStatus(this.trackerStatus);
-        }
-
-        //add node itself to window
-        updateNodeTable(this.getTrackerNodeList());
     }
 
     public static TrackerInstance getNode(String id) {
         return TrackerInstance.map.get(id);
     }
 
-    private void deployUDP() {
-        udpServer = new TrackerUDPServer(this);
+    private void deployUDP() throws IOException {
+        udpServer = new TrackerUDPServer(this, ip);
         udpServer.backgroundDispatch();
         this.port = udpServer.getListeningPort();
     }
@@ -295,6 +283,31 @@ public class TrackerInstance implements Comparable {
     }
 
     public synchronized void deploy() throws JMSException {
+
+        //deploy background udp server
+        try {
+            deployUDP();
+        } catch (IOException e) {
+            System.err.println(e.getLocalizedMessage());
+        }
+
+        //deploy our background services
+        deployServices();
+
+        //init keep alive daemon
+        keepaliveDaemon = new KeepAliveDaemon(this);
+
+        //show tracker window
+        showTrackerWindow();
+
+        this.trackerStatus = TrackerStatus.ONLINE;
+        if (this.refresh != null) {
+            this.refresh.updateTrackerStatus(this.trackerStatus);
+        }
+
+        //add node itself to window
+        updateNodeTable(this.getTrackerNodeList());
+
         //send first hello world message for tracker master detection
         MessageCollection message = MessageCollection.HELLO_WORLD;
         getSender(HANDSHAKE_SERVICE).send(message);
@@ -412,7 +425,6 @@ public class TrackerInstance implements Comparable {
     private void stopSendingKeepAlives() {
         //stop sending keep alives
         this.nodeAlive = NODE_OFFLINE_MODE;
-        //this.keepaliveDaemon
     }
 
     private void setRefresh(InterfaceRefresher refresh) {

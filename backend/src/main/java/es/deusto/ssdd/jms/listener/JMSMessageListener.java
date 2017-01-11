@@ -64,7 +64,7 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
             connection.start();
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            System.err.println(ex.getLocalizedMessage());
         }
     }
 
