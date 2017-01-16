@@ -5,38 +5,44 @@ import es.deusto.ssdd.jms.message.IJMSMessage;
 
 import java.io.Serializable;
 
-/**
- * Created by .local on 14/11/2016.
- */
 public class DataSyncMessage implements Serializable, IJMSMessage {
 
-    private final String remoteNodeId;
+    private final String sourceTrackerId;
+    private final String remoteTrackerId;
+    private String query;
 
-    public DataSyncMessage(String trackerId) {
-        this.remoteNodeId = trackerId;
+    public DataSyncMessage(String sourceTrackerId, String remoteTrackerId) {
+        this.sourceTrackerId = sourceTrackerId;
+        this.remoteTrackerId = remoteTrackerId;
+        this.query = null;
     }
 
     @Override
     public void onReceivedEvent(String currentNodeId) {
-        TrackerInstance thisNode = TrackerInstance.getNode(currentNodeId);
-        TrackerInstance remoteNode = TrackerInstance.getNode(remoteNodeId);
-        if (thisNode != null) {
-            thisNode.requestDatabaseClone(remoteNode);
+        TrackerInstance remoteNode = TrackerInstance.getNode(sourceTrackerId);
+
+        //proces message only, if it is for me
+        if (currentNodeId.equals(remoteTrackerId)) {
+            TrackerInstance thisNode = TrackerInstance.getNode(currentNodeId);
+            if (thisNode != null && this.query != null) {
+                //update data sync request on local storage
+                thisNode.syncData(query);
+            }
         }
     }
 
     @Override
-    public void onBroadcastEvent() {
-        System.out.println(remoteNodeId + " Tracker data sync message broadcast event here");
+    public void onBroadcastEvent(String currentNodeId) {
+        System.out.println(currentNodeId + " DATA_SYNC trigger ");
     }
 
     @Override
     public String getSourceTrackerId() {
-        return this.remoteNodeId;
+        return this.sourceTrackerId;
     }
 
     @Override
     public String getPrintable() {
-        return "DATA SYNC from " + this.getSourceTrackerId();
+        return "DATA_SYNC from " + this.getSourceTrackerId();
     }
 }

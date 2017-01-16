@@ -7,34 +7,30 @@ import es.deusto.ssdd.gui.view.TrackerWindow;
 import es.deusto.ssdd.jms.listener.JMSMessageListener;
 import es.deusto.ssdd.jms.listener.JMSMessageSender;
 import es.deusto.ssdd.jms.listener.KeepAliveDaemon;
-import es.deusto.ssdd.jms.listener.TrackerDaemonSpec;
 import es.deusto.ssdd.jms.message.MessageCollection;
+import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 import es.deusto.ssdd.jms.model.TrackerInstanceNodeType;
 import es.deusto.ssdd.jms.model.TrackerStatus;
+import es.deusto.ssdd.udp.TrackerUDPServer;
 
 import javax.jms.JMSException;
-import java.io.*;
-import java.net.Socket;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static es.deusto.ssdd.jms.listener.TrackerDaemonSpec.*;
+import static es.deusto.ssdd.jms.model.TrackerDaemonSpec.*;
 
-/**
- * Created by .local on 14/11/2016.
- */
 public class TrackerInstance implements Comparable {
 
     //constants
     private static final String ACTIVE_MQ_SERVER = "tcp://localhost:61616";
     private static final int THIS_IS_OLDER = 1;
     private static final int TIMESTAMP_VALUE = 1;
-    private static final String ID_SEPARATOR_TAG = ">";
+    private static final String ID_SEPARATOR_TAG = "_";
     private static final ConcurrentHashMap<String, TrackerInstance> map = new ConcurrentHashMap<>();
     private static final int MAX_KEEP_ALIVE_TIME = 5;
     private static final boolean NODE_OFFLINE_MODE = false;
@@ -50,7 +46,7 @@ public class TrackerInstance implements Comparable {
     private int port;
     private TrackerStatus trackerStatus;
     private InterfaceRefresher refresh;
-    private AtomicBoolean nodeAlive;
+    private boolean nodeAlive;
     private AtomicInteger pendingLifetime;
     //node type
     private TrackerInstanceNodeType nodeType;
@@ -64,6 +60,9 @@ public class TrackerInstance implements Comparable {
     //tracker instance window
     private TrackerWindow trackerWindow;
 
+    //tracker udp server
+    private TrackerUDPServer udpServer;
+
     private PersistenceHandler persistenceHandler;
 
     //listener map
@@ -72,14 +71,12 @@ public class TrackerInstance implements Comparable {
     private HashMap<TrackerDaemonSpec, JMSMessageSender> senderHashMap;
 
     public TrackerInstance() {
-
         this.trackerStatus = TrackerStatus.OFFLINE;
         synchronized (this) {
             System.out.println("Running tracker instance " + (counter.incrementAndGet()));
             trackerId = generateId();
         }
         ip = TrackerUtil.getIP();
-        port = 8000;
         System.out.println("Tracker ID: " + trackerId);
 
         //add to instance map. only for development with multinodes in local mode
@@ -90,42 +87,39 @@ public class TrackerInstance implements Comparable {
 
         setupDaemons();
 
+        //todo delete after 3rd delivery
+        //deploy background udp server
+        try {
+            deployUDP();
+        } catch (IOException e) {
+            System.err.println(e.getLocalizedMessage());
+        }
+
         //add itself to tracker node list
         trackerNodeList.put(this.getTrackerId(), this);
 
         //init master node
         masterNode = null;
 
-        //init keep alive daemon
-        keepaliveDaemon = new KeepAliveDaemon(this);
-
         //init node type
         nodeType = TrackerInstanceNodeType.MASTER;
 
         //init keep alive attributes
-        nodeAlive = new AtomicBoolean(NODE_ONLINE_MODE);
+        nodeAlive = NODE_ONLINE_MODE;
         pendingLifetime = new AtomicInteger(MAX_KEEP_ALIVE_TIME);
 
         //init persistenceHandler
-        persistenceHandler = new PersistenceHandler(trackerId);
-
-        //deploy our background services
-        deployServices();
-
-        //show tracker window
-        showTrackerWindow();
-
-        this.trackerStatus = TrackerStatus.ONLINE;
-        if (this.refresh != null) {
-            this.refresh.updateTrackerStatus(this.trackerStatus);
-        }
-
-        //add node itself to window
-        updateNodeTable(this.getTrackerNodeList());
+        persistenceHandler = new PersistenceHandler(this);
     }
 
     public static TrackerInstance getNode(String id) {
         return TrackerInstance.map.get(id);
+    }
+
+    private void deployUDP() throws IOException {
+        udpServer = new TrackerUDPServer(this, ip);
+        udpServer.backgroundDispatch();
+        this.port = udpServer.getListeningPort();
     }
 
     private synchronized String generateId() {
@@ -143,11 +137,11 @@ public class TrackerInstance implements Comparable {
         this.pendingLifetime = pendingLifetime;
     }
 
-    public AtomicBoolean getNodeAlive() {
+    public boolean getNodeAlive() {
         return nodeAlive;
     }
 
-    public void setNodeAlive(AtomicBoolean nodeAlive) {
+    public void setNodeAlive(boolean nodeAlive) {
         this.nodeAlive = nodeAlive;
     }
 
@@ -161,12 +155,12 @@ public class TrackerInstance implements Comparable {
         thread(getListener(KEEP_ALIVE_SERVICE), false);
         thread(getSender(KEEP_ALIVE_SERVICE), false);
 
-        //start keep alive daemon
-        thread(keepaliveDaemon, false);
-
         //start data sync service actors
         thread(getListener(DATA_SYNC_SERVICE), false);
         thread(getSender(DATA_SYNC_SERVICE), false);
+
+        //start keep alive daemon
+        thread(keepaliveDaemon, false);
     }
 
     private void setupDaemons() {
@@ -181,13 +175,13 @@ public class TrackerInstance implements Comparable {
     private void setupSenderDaemons() {
         //populate maps
         senderHashMap.put(HANDSHAKE_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
+                new JMSMessageSender(this, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
         );
         senderHashMap.put(KEEP_ALIVE_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
+                new JMSMessageSender(this, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
         );
         senderHashMap.put(DATA_SYNC_SERVICE,
-                new JMSMessageSender(trackerId, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
+                new JMSMessageSender(this, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
         );
     }
 
@@ -232,7 +226,7 @@ public class TrackerInstance implements Comparable {
     }
 
     private TrackerInstance getOlderTrackerInstance() {
-        Map<String, TrackerInstance> copiedTrackerList = (Map<String, TrackerInstance>) trackerNodeList.clone();
+        Map<String, TrackerInstance> copiedTrackerList = getTrackerNodeList();
         Iterator it = copiedTrackerList.entrySet().iterator();
         TrackerInstance olderIdInstance = this;
         while (it.hasNext()) {
@@ -289,6 +283,31 @@ public class TrackerInstance implements Comparable {
     }
 
     public synchronized void deploy() throws JMSException {
+
+        //deploy background udp server
+        try {
+            deployUDP();
+        } catch (IOException e) {
+            System.err.println(e.getLocalizedMessage());
+        }
+
+        //deploy our background services
+        deployServices();
+
+        //init keep alive daemon
+        keepaliveDaemon = new KeepAliveDaemon(this);
+
+        //show tracker window
+        showTrackerWindow();
+
+        this.trackerStatus = TrackerStatus.ONLINE;
+        if (this.refresh != null) {
+            this.refresh.updateTrackerStatus(this.trackerStatus);
+        }
+
+        //add node itself to window
+        updateNodeTable(this.getTrackerNodeList());
+
         //send first hello world message for tracker master detection
         MessageCollection message = MessageCollection.HELLO_WORLD;
         getSender(HANDSHAKE_SERVICE).send(message);
@@ -298,7 +317,7 @@ public class TrackerInstance implements Comparable {
         return senderHashMap.get(spec);
     }
 
-    public JMSMessageListener getListener(TrackerDaemonSpec spec) {
+    private JMSMessageListener getListener(TrackerDaemonSpec spec) {
         return listenerHashMap.get(spec);
     }
 
@@ -310,7 +329,7 @@ public class TrackerInstance implements Comparable {
         return nodeType;
     }
 
-    public void setNodeType(TrackerInstanceNodeType nodeType) {
+    private void setNodeType(TrackerInstanceNodeType nodeType) {
         this.nodeType = nodeType;
     }
 
@@ -383,7 +402,7 @@ public class TrackerInstance implements Comparable {
         return trackerStatus;
     }
 
-    public void setTrackerStatus(TrackerStatus trackerStatus) {
+    private void setTrackerStatus(TrackerStatus trackerStatus) {
         this.trackerStatus = trackerStatus;
     }
 
@@ -391,13 +410,7 @@ public class TrackerInstance implements Comparable {
         return nodeType == TrackerInstanceNodeType.MASTER;
     }
 
-    public void stopNode() {
-        sayGoodByeToCluster();
-        stopSendingKeepAlives();
-        // TODO stop all running background threads
-    }
-
-    private void sayGoodByeToCluster() {
+    public void sayGoodByeToCluster() {
         try {
             JMSMessageSender sender = this.getSender(HANDSHAKE_SERVICE);
             if (sender != null) {
@@ -411,10 +424,10 @@ public class TrackerInstance implements Comparable {
 
     private void stopSendingKeepAlives() {
         //stop sending keep alives
-        this.nodeAlive.set(NODE_OFFLINE_MODE);
+        this.nodeAlive = NODE_OFFLINE_MODE;
     }
 
-    public void setRefresh(InterfaceRefresher refresh) {
+    private void setRefresh(InterfaceRefresher refresh) {
         this.refresh = refresh;
     }
 
@@ -454,9 +467,7 @@ public class TrackerInstance implements Comparable {
     }
 
     public void removeDeadNodesFromList(ArrayList<TrackerInstance> instancesToRemove) {
-        for (TrackerInstance node : instancesToRemove) {
-            this.trackerNodeList.remove(node);
-        }
+        instancesToRemove.forEach(this.trackerNodeList::remove);
     }
 
     public boolean isKeepAliveCountDead() {
@@ -474,7 +485,7 @@ public class TrackerInstance implements Comparable {
     }
 
     public boolean isAlive() {
-        return this.nodeAlive.get();
+        return this.nodeAlive;
     }
 
     @Override
@@ -486,39 +497,41 @@ public class TrackerInstance implements Comparable {
         return trackerId.equals(that.trackerId);
     }
 
-    public void requestDatabaseClone(TrackerInstance remoteNode) {
-        //todo open a tcp connection against remote node for .sqlite file tranfer
-        try{
-            String remoteIp = remoteNode.getIp();
-            int remotePort = remoteNode.getPort();
-            Socket socket = new Socket(remoteIp, remotePort);
+    private String getTrackerDatabaseName() {
+        return this.persistenceHandler.getDatabaseName();
+    }
 
-            //read stream
-            DataInputStream in = new DataInputStream(socket.getInputStream());
-            int size = Integer.parseInt(in.readLine().split(": ")[1]);
-            byte[] item = new byte[size];
-            for(int i = 0; i < size; i++)
-                item[i] = in.readByte();
+    public byte[] getDatabaseArray() {
+        return this.persistenceHandler.getDatabaseArray();
+    }
 
-            //write to disk
-            String fileName = getTrackerDatabaseName();
-            File file = new File(fileName);
-            FileOutputStream fos = new FileOutputStream(file);
-            BufferedOutputStream bos = new BufferedOutputStream(fos);
-            bos.write(item);
-
-            bos.close();
-            fos.close();
-
-            in.close();
-            socket.close();
-        }
-        catch (IOException e){
+    //send current database to remote node
+    public void sendDatabaseBack(TrackerInstance remoteNode) {
+        try {
+            MessageCollection message = MessageCollection.DATABASE_CLONE;
+            message.setRemoteNode(remoteNode);
+            this.getSender(TrackerDaemonSpec.DATA_SYNC_SERVICE)
+                    .send(message);
+        } catch (JMSException e) {
             e.printStackTrace();
         }
     }
 
-    private String getTrackerDatabaseName() {
-        return this.trackerId+".db";
+    public void overwriteLocalDatabase(byte[] binaryContent) {
+        this.persistenceHandler.overwrite(binaryContent);
+    }
+
+    public void stopNode() {
+        //stop sending keep alives
+        stopSendingKeepAlives();
+        //stop UDP server
+        udpServer.stopService();
+        //delete local database
+        persistenceHandler.deleteDatabase();
+    }
+
+    public void syncData(String query) {
+        System.out.println(trackerId + " Synchronization received");
+        persistenceHandler.sync(query);
     }
 }

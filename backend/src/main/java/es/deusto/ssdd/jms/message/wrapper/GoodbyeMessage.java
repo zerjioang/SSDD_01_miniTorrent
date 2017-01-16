@@ -30,8 +30,10 @@ public class GoodbyeMessage implements Serializable, IJMSMessage {
     }
 
     @Override
-    public void onBroadcastEvent() {
-        System.out.println(remoteNodeId + " Tracker goodbye message broadcast event here");
+    public void onBroadcastEvent(String currentNodeId) {
+        TrackerInstance thisNode = TrackerInstance.getNode(currentNodeId);
+        System.out.println(remoteNodeId + " Tracker goodbye message sent. Stopping");
+        thisNode.stopNode();
     }
 
     @Override

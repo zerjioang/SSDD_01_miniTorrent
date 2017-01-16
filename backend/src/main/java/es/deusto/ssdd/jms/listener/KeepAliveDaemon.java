@@ -2,6 +2,7 @@ package es.deusto.ssdd.jms.listener;
 
 import es.deusto.ssdd.jms.TrackerInstance;
 import es.deusto.ssdd.jms.message.MessageCollection;
+import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 
 import javax.jms.JMSException;
 import java.util.ArrayList;

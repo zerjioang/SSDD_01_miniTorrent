@@ -1,7 +1,9 @@
 package es.deusto.ssdd.jms.listener;
 
+import es.deusto.ssdd.jms.TrackerInstance;
 import es.deusto.ssdd.jms.message.IJMSMessage;
 import es.deusto.ssdd.jms.message.MessageCollection;
+import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.command.ActiveMQObjectMessage;
 
@@ -10,6 +12,7 @@ import java.util.ArrayList;
 
 public class JMSMessageSender implements Runnable {
 
+    private final TrackerInstance tracker;
     private final String trackerId;
     private String serviceName;
     private String connectionId;
@@ -21,8 +24,9 @@ public class JMSMessageSender implements Runnable {
     private boolean keepAlive;
     private ArrayList<MessageCollection> messagesToSend;
 
-    public JMSMessageSender(String trackerId, String connectionId, TrackerDaemonSpec trackerSpecs) {
-        this.trackerId = trackerId;
+    public JMSMessageSender(TrackerInstance tracker, String connectionId, TrackerDaemonSpec trackerSpecs) {
+        this.tracker = tracker;
+        this.trackerId = tracker.getTrackerId();
         try {
             if (trackerSpecs == null)
                 throw new JMSException("A tracker service spec is needed for JMS Message sender creation");
@@ -83,7 +87,7 @@ public class JMSMessageSender implements Runnable {
                     if (o != null) {
                         IJMSMessage m = (IJMSMessage) o;
                         System.out.println(trackerId + " >> SEND >> " + getMessageSenderId() + " >> " + m.getPrintable());
-                        m.onBroadcastEvent();
+                        m.onBroadcastEvent(trackerId);
                     }
                 } catch (JMSException e) {
                     e.printStackTrace();
@@ -224,5 +228,9 @@ public class JMSMessageSender implements Runnable {
 
     public String getTrackerId() {
         return trackerId;
+    }
+
+    public TrackerInstance getTracker() {
+        return tracker;
     }
 }

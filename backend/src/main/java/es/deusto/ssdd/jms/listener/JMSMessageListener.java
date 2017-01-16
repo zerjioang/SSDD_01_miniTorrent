@@ -1,6 +1,7 @@
 package es.deusto.ssdd.jms.listener;
 
 import es.deusto.ssdd.jms.message.IJMSMessage;
+import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.command.ActiveMQObjectMessage;
 
@@ -63,7 +64,7 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
             connection.start();
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            System.err.println(ex.getLocalizedMessage());
         }
     }
 
