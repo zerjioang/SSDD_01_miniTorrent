@@ -23,3 +23,11 @@ hs_err_pid*
 
 #eclipse crap
 //.settings//
+.classpath
+.project
+
+backend/.classpath
+backend/.project
+backend/.settings/
+dev/
+gui/
