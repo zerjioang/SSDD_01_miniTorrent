@@ -1,5 +1,10 @@
 package bittorrent.udp;
 
+import bittorrent.util.TorrentUtils;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 /**
  * Offset  Size            	Name            	Value
  * 0       32-bit integer  	action          	3 // error
@@ -16,16 +21,31 @@ public class Error extends BitTorrentUDPMessage {
     }
 
     public static Error parse(byte[] byteArray) {
-        //TODO: Complete this method
-
-        return null;
+        ByteBuffer bufferReceive = ByteBuffer.wrap(byteArray);
+        Error error = new Error();
+        error.setAction(Action.valueOf(bufferReceive.getInt(0)));
+        error.setTransactionId(bufferReceive.getInt(TorrentUtils.INT_SIZE));
+        byte[] messageData = new byte[byteArray.length - 8];
+        bufferReceive.position(8);
+        bufferReceive.get(messageData);
+        error.setMessage(new String(messageData));
+        return error;
     }
 
     @Override
     public byte[] getBytes() {
-        //TODO: Complete this method
+        int initialSize = 8;
+        int size = initialSize + message.getBytes().length;
+        ByteBuffer byteBuffer = ByteBuffer.allocate(size);
+        byteBuffer.order(ByteOrder.BIG_ENDIAN);
 
-        return null;
+        byteBuffer.putInt(0, getAction().value());
+        byteBuffer.putInt(4, getTransactionId());
+        byteBuffer.position(8);
+        byteBuffer.put(message.getBytes());
+
+        byteBuffer.flip();
+        return byteBuffer.array();
     }
 
     public String getMessage() {

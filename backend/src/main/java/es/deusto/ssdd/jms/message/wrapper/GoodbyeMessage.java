@@ -23,7 +23,7 @@ public class GoodbyeMessage implements Serializable, IJMSMessage {
         if (thisNode != null) {
             thisNode.removeRemoteNode(remoteNodeId);
             if (remoteNode.isMaster()) {
-                System.out.println(currentNodeId + " MASTER is gone. Election time!!");
+                thisNode.addLogLine("MASTER is gone. Election time!!");
                 thisNode.beginMasterElectionProcess();
             }
         }
@@ -32,7 +32,7 @@ public class GoodbyeMessage implements Serializable, IJMSMessage {
     @Override
     public void onBroadcastEvent(String currentNodeId) {
         TrackerInstance thisNode = TrackerInstance.getNode(currentNodeId);
-        System.out.println(remoteNodeId + " Tracker goodbye message sent. Stopping");
+        thisNode.addLogLine("Stream: tracker goodbye message sent. Stopping");
         thisNode.stopNode();
     }
 

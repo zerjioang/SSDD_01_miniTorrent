@@ -1,5 +1,7 @@
 package bittorrent.udp;
 
+import bittorrent.util.TorrentUtils;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -27,11 +29,13 @@ public class AnnounceResponse extends BitTorrentUDPMessage {
 
     public AnnounceResponse() {
         super(Action.ANNOUNCE);
-
         this.peers = new ArrayList<>();
     }
 
     public static AnnounceResponse parse(byte[] byteArray) {
+        int initialSize = 20;
+        int peerSize = 6;
+
         try {
             ByteBuffer buffer = ByteBuffer.wrap(byteArray);
             buffer.order(ByteOrder.BIG_ENDIAN);
@@ -44,15 +48,15 @@ public class AnnounceResponse extends BitTorrentUDPMessage {
             msg.setLeechers(buffer.getInt(12));
             msg.setSeeders(buffer.getInt(16));
 
-            int index = 20;
-            PeerInfo peerInfo = null;
+            int index = initialSize;
+            PeerInfo peerInfo;
 
-            while ((index + 6) < byteArray.length) {
+            while ((index + peerSize) < byteArray.length) {
                 peerInfo = new PeerInfo();
                 peerInfo.setIpAddress(buffer.getInt(index));
-                peerInfo.setPort(buffer.getShort(index + 4));
+                peerInfo.setPort(buffer.getShort(index + TorrentUtils.INT_SIZE));
                 msg.getPeers().add(peerInfo);
-                index += 6;
+                index += peerSize;
             }
 
             return msg;
@@ -65,7 +69,11 @@ public class AnnounceResponse extends BitTorrentUDPMessage {
 
     @Override
     public byte[] getBytes() {
-        ByteBuffer buffer = ByteBuffer.allocate(98);
+        int initialSize = 20;
+        int peerSize = 6;
+
+        int messageSize = initialSize + peerSize * peers.size();
+        ByteBuffer buffer = ByteBuffer.allocate(messageSize);
         buffer.order(ByteOrder.BIG_ENDIAN);
 
         buffer.putInt(0, getAction().value());
@@ -74,24 +82,16 @@ public class AnnounceResponse extends BitTorrentUDPMessage {
         buffer.putInt(12, getLeechers());
         buffer.putInt(16, getSeeders());
 
-        //TODO falta settear estos campos
-
-        /*
-        int index = 20;
-            PeerInfo peerInfo = null;
-
-            while ((index + 6) < byteArray.length) {
-                peerInfo = new PeerInfo();
-                peerInfo.setIpAddress(buffer.getInt(index));
-                peerInfo.setPort(buffer.getShort(index + 4));
-                msg.getPeers().add(peerInfo);
-                index += 6;
-            }
-         */
-
+        int index = initialSize;
+        for (PeerInfo p : peers) {
+            int port = p.getPort();
+            int ip = p.getIpAddress();
+            buffer.putInt(index, ip);
+            buffer.putShort(index + TorrentUtils.INT_SIZE, (short) port);
+            index += peerSize;
+        }
 
         buffer.flip();
-
         return buffer.array();
     }
 

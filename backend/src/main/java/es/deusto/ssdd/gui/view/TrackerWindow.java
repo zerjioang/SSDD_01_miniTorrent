@@ -1,20 +1,18 @@
 package es.deusto.ssdd.gui.view;
 
+import es.deusto.ssdd.gui.model.observ.TorrentObserver;
 import es.deusto.ssdd.jms.TrackerInstance;
-import es.deusto.ssdd.jms.model.TrackerInstanceNodeType;
 import es.deusto.ssdd.jms.model.TrackerStatus;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowFocusListener;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowFocusListener {
+public class TrackerWindow extends JFrame implements TorrentObserver {
 
     private final TrackerInstance instance;
     private final JLabel labelTrackerIp;
@@ -24,12 +22,16 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
     private final JTable activeTrackersTable;
     private DefaultTableModel activeTrackersTableModel;
 
+    private TrackerLogWindow logWindow;
+
     /**
      * Create the frame.
      */
     public TrackerWindow(TrackerInstance instance) {
         this.instance = instance;
 
+        //set window logo
+        setLogo();
         //set system theme
         setSystemTheme();
 
@@ -131,14 +133,12 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         JLabel label_4 = new JLabel("0");
         panelBottom.add(label_4);
 
-        //populate window with data
-        populateWindow();
-
         //set window centered
         setLocationRelativeTo(null);
 
-        //focus listener
-        addWindowFocusListener(this);
+        //set log window visible
+        this.logWindow = new TrackerLogWindow(instance);
+        this.logWindow.setVisible(true);
     }
 
     /**
@@ -155,6 +155,12 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         });
     }
 
+    private void setLogo() {
+        //set icon
+        ClassLoader classLoader = TrackerWindow.class.getClassLoader();
+        setIconImage(Toolkit.getDefaultToolkit().getImage(classLoader.getResource("img/logo.png")));
+    }
+
     private JPanel createTopBar() {
         JMenuBar menuBar = new JMenuBar();
         setJMenuBar(menuBar);
@@ -168,6 +174,10 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
 
         JMenu mnSettings = new JMenu("Settings");
         menuBar.add(mnSettings);
+
+        JMenuItem mntmShowLog = new JMenuItem("Show log window");
+        mntmShowLog.addActionListener(TrackerGUIEvents.MENU_SHOW_LOG.event(this));
+        mnSettings.add(mntmShowLog);
 
         JMenuItem mntmConfigurarTracker = new JMenuItem("Tracker settings");
         mntmConfigurarTracker.addActionListener(TrackerGUIEvents.MENU_CONFIGURE_TRACKER.event(this));
@@ -190,16 +200,6 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         return contentPane;
     }
 
-    private void populateWindow() {
-        if (instance != null) {
-            updateTrackerStatus(instance.getTrackerStatus());
-            labelTrackerIp.setText(instance.getIp());
-            labelTrackerPort.setText("" + instance.getPort());
-            labelTrackerId.setText(instance.getTrackerId());
-            updateTrackerStatus(instance.getTrackerStatus());
-        }
-    }
-
     private void setSystemTheme() {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -213,67 +213,68 @@ public class TrackerWindow extends JFrame implements InterfaceRefresher, WindowF
         return instance;
     }
 
-    public void updateWindowView() {
-        this.updateTrackerStatus(instance.getTrackerStatus());
-        this.updateNodeType(instance.getNodeType());
-    }
-
-    public void updateTrackerStatus(TrackerStatus status) {
-        if (status != null) {
-            this.labelTrackerOnline.setText("" + status);
-            this.labelTrackerOnline.setForeground(status.getColor());
-        }
-        //empty tracker nodes tables info
-        emptyActiveTrackersTable();
-        this.repaint();
-    }
-
-    @Override
-    public void addTrackerNodeToTable(HashMap<String, TrackerInstance> remoteNodeList) {
-        // add row dynamically into the table
-        //columns: "ID", "Tracker IP", "Tracker port", "Node type", "Last keep alive"
-        try {
-            emptyActiveTrackersTable();
-
-            Iterator it = remoteNodeList.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry) it.next();
-                TrackerInstance remoteNode = (TrackerInstance) pair.getValue();
-                activeTrackersTableModel.addRow(
-                        new Object[]{
-                                remoteNode.getTrackerId(), remoteNode.getIp(), remoteNode.getPort(), remoteNode.getNodeType().toString(), remoteNode.getLastKeepAlive()
-                        }
-                );
-                it.remove();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     private void emptyActiveTrackersTable() {
         while (activeTrackersTableModel.getRowCount() != 0) {
             activeTrackersTableModel.removeRow(0);
         }
     }
 
-    @Override
-    public void updateNodeType(TrackerInstanceNodeType nodeType) {
-        this.setTitle("Tracker Node :: " + instance.getNodeType());
-        this.repaint();
-    }
-
-    @Override
-    public void windowGainedFocus(WindowEvent windowEvent) {
-        this.updateWindowView();
-    }
-
-    @Override
-    public void windowLostFocus(WindowEvent windowEvent) {
-
-    }
-
     private TrackerWindow getThisWindow() {
         return this;
+    }
+
+    public void addLogLine(String data) {
+        this.logWindow.addLogLine(data);
+    }
+
+    public void showLogWindow() {
+        if (this.logWindow != null) {
+            this.logWindow.setVisible(true);
+        }
+    }
+
+    @Override
+    public void update() {
+        //update window title
+        if (instance != null) {
+            this.setTitle("Tracker Node :: " + instance.getNodeType());
+
+            //update ip
+            labelTrackerIp.setText(instance.getIp());
+            //update port
+            labelTrackerPort.setText("" + instance.getPort());
+            //update tracker id
+            labelTrackerId.setText(instance.getTrackerId());
+
+            //update table content
+            // add row dynamically into the table
+            //columns: "ID", "Tracker IP", "Tracker port", "Node type", "Last keep alive"
+            try {
+                emptyActiveTrackersTable();
+                HashMap<String, TrackerInstance> list = instance.getTrackerNodeList();
+                if (list != null) {
+                    Iterator it = list.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Map.Entry pair = (Map.Entry) it.next();
+                        TrackerInstance remoteNode = (TrackerInstance) pair.getValue();
+                        activeTrackersTableModel.addRow(
+                                new Object[]{
+                                        remoteNode.getTrackerId(), remoteNode.getIp(), remoteNode.getPort(), remoteNode.getNodeType().toString(), remoteNode.getLastKeepAlive()
+                                }
+                        );
+                        it.remove();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            //update status
+            TrackerStatus status = instance.getTrackerStatus();
+            if (status != null) {
+                this.labelTrackerOnline.setText("" + status);
+                this.labelTrackerOnline.setForeground(status.getColor());
+            }
+        }
     }
 }

@@ -37,12 +37,12 @@ public class JMSMessageSender implements Runnable {
             this.keepAlive = true;
             this.messagesToSend = new ArrayList<>();
         } catch (JMSException e) {
-            e.printStackTrace();
+            TrackerInstance.getNode(trackerId).addLogLine("Error: " + e.getLocalizedMessage());
         }
     }
 
     public void run() {
-        System.out.println(trackerId + " JMS " + getMessageSenderId() + " Daemon sender [STARTED]");
+        TrackerInstance.getNode(trackerId).addLogLine("Debug: JMS " + getMessageSenderId() + " Daemon sender [STARTED]");
         try {
             // Create a Connection
             connection = createConnection(connectionId);
@@ -69,9 +69,9 @@ public class JMSMessageSender implements Runnable {
 
             // Clean up
             closeSender(connection, session);
-            System.out.println("JMS Daemon sender [STOPPED]");
+            TrackerInstance.getNode(trackerId).addLogLine("Debug: JMS Daemon sender [STOPPED]");
         } catch (Exception ex) {
-            System.err.println("# JMSMessageSender error: " + ex.getMessage());
+            TrackerInstance.getNode(trackerId).addLogLine("Error: JMSMessageSender error: " + ex.getMessage());
         }
     }
 
@@ -86,7 +86,7 @@ public class JMSMessageSender implements Runnable {
                     Object o = message.getObject();
                     if (o != null) {
                         IJMSMessage m = (IJMSMessage) o;
-                        System.out.println(trackerId + " >> SEND >> " + getMessageSenderId() + " >> " + m.getPrintable());
+                        TrackerInstance.getNode(trackerId).addLogLine("Stream: >> SEND >> " + getMessageSenderId() + " >> " + m.getPrintable());
                         m.onBroadcastEvent(trackerId);
                     }
                 } catch (JMSException e) {

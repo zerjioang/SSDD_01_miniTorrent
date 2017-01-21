@@ -31,7 +31,6 @@ public class ConnectResponse extends BitTorrentUDPRequestMessage {
         } catch (Exception ex) {
             System.out.println("# Error parsing ConnectResponse message: " + ex.getMessage());
         }
-
         return null;
     }
 

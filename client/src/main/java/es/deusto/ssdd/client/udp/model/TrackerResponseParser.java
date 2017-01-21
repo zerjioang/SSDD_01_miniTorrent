@@ -17,7 +17,7 @@ public enum TrackerResponseParser {
 
         @Override
         protected boolean validate(BitTorrentUDPMessage parsedRequestMessage) {
-            return parsedRequestMessage.getAction().value() == 0 &&
+            return parsedRequestMessage.getAction() == BitTorrentUDPMessage.Action.CONNECT &&
                     parsedRequestMessage.getBytes().length >= 16;
         }
 
@@ -58,7 +58,8 @@ public enum TrackerResponseParser {
 
         @Override
         protected boolean validate(BitTorrentUDPMessage parsedRequestMessage) {
-            return false;
+            return parsedRequestMessage.getAction() == BitTorrentUDPMessage.Action.ANNOUNCE &&
+                    parsedRequestMessage.getBytes().length >= 16;
         }
 
         @Override
@@ -85,7 +86,7 @@ public enum TrackerResponseParser {
 
         @Override
         protected boolean validate(BitTorrentUDPMessage parsedRequestMessage) {
-            return false;
+            return parsedRequestMessage.getAction() == BitTorrentUDPMessage.Action.SCRAPE;
         }
 
         @Override
@@ -112,7 +113,7 @@ public enum TrackerResponseParser {
 
         @Override
         protected boolean validate(BitTorrentUDPMessage parsedRequestMessage) {
-            return false;
+            return parsedRequestMessage.getAction() == BitTorrentUDPMessage.Action.ERROR;
         }
 
         @Override
@@ -123,6 +124,8 @@ public enum TrackerResponseParser {
         @Override
         protected void triggerOnReceiveEvent(PeerClient peerClient, BitTorrentUDPMessage parsedRequestMessage) {
             System.out.println("Error response message received");
+            Error e = (Error) parsedRequestMessage;
+            System.err.println("Error from tracker: " + e.getMessage());
         }
 
         @Override
@@ -131,12 +134,6 @@ public enum TrackerResponseParser {
         }
     };
 
-    protected abstract BitTorrentUDPMessage parse(byte[] byteArray);
-    protected abstract boolean validate(BitTorrentUDPMessage parsedRequestMessage);
-    protected abstract byte[] getRequest(BitTorrentUDPMessage parsedRequestMessage);
-    protected abstract void triggerOnReceiveEvent(PeerClient peerClient, BitTorrentUDPMessage parsedRequestMessage);
-    protected abstract byte[] getErrorMessage(boolean valid, BitTorrentUDPMessage parsedRequestMessage);
-
     private static final TrackerResponseParser[] list = TrackerResponseParser.values();
 
     public static BitTorrentUDPMessage parse(int value, byte[] byteArray) {
@@ -144,13 +141,13 @@ public enum TrackerResponseParser {
     }
 
     public static boolean validate(int value, BitTorrentUDPMessage parsedRequestMessage) {
-        if(parsedRequestMessage!=null)
-            return list[value].validate(parsedRequestMessage);
-        return false;
+        return parsedRequestMessage != null && list[value].validate(parsedRequestMessage);
     }
+
     public static byte[] getRequest(int value, BitTorrentUDPMessage parsedRequestMessage) {
         return list[value].getRequest(parsedRequestMessage);
     }
+
     public static void triggerOnReceiveEvent(PeerClient peerClient, int value, BitTorrentUDPMessage parsedRequestMessage) {
         if(parsedRequestMessage!=null)
             list[value].triggerOnReceiveEvent(peerClient, parsedRequestMessage);
@@ -159,4 +156,14 @@ public enum TrackerResponseParser {
     public static byte[] getError(int value, boolean valid, BitTorrentUDPMessage parsedRequestMessage) {
         return list[value].getErrorMessage(valid, parsedRequestMessage);
     }
+
+    protected abstract BitTorrentUDPMessage parse(byte[] byteArray);
+
+    protected abstract boolean validate(BitTorrentUDPMessage parsedRequestMessage);
+
+    protected abstract byte[] getRequest(BitTorrentUDPMessage parsedRequestMessage);
+
+    protected abstract void triggerOnReceiveEvent(PeerClient peerClient, BitTorrentUDPMessage parsedRequestMessage);
+
+    protected abstract byte[] getErrorMessage(boolean valid, BitTorrentUDPMessage parsedRequestMessage);
 }

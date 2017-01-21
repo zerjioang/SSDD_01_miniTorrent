@@ -1,5 +1,9 @@
 package bittorrent.udp;
 
+import bittorrent.util.StringUtils;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,16 +26,52 @@ public class ScrapeRequest extends BitTorrentUDPRequestMessage {
     }
 
     public static ScrapeRequest parse(byte[] byteArray) {
-        //TODO: Complete this method
+        int infoHashSize = 20;
+        int initialSize = 16;
 
-        return null;
+        ByteBuffer bufferData = ByteBuffer.wrap(byteArray);
+        ScrapeRequest scrapeRequest = new ScrapeRequest();
+        scrapeRequest.setConnectionId(bufferData.getLong(0));
+        scrapeRequest.setAction(Action.valueOf(bufferData.getInt(8)));
+        scrapeRequest.setTransactionId(bufferData.getInt(12));
+        int index = 16;
+        boolean error = false;
+        for (index = initialSize; index < byteArray.length && !error; index += infoHashSize) {
+            byte[] infoHashBytes = new byte[infoHashSize];
+            bufferData.position(index);
+            bufferData.get(infoHashBytes);
+            String infoHash = StringUtils.toHexString(infoHashBytes);
+            boolean notEmpty = !infoHash.matches("[0]+");
+            if (notEmpty) {
+                scrapeRequest.addInfoHash(infoHash);
+            } else {
+                error = true;
+            }
+        }
+        return scrapeRequest;
     }
 
     @Override
     public byte[] getBytes() {
-        //TODO: Complete this method
+        int infoHashSize = 20;
+        int initialSize = 16;
 
-        return null;
+        int size = initialSize + infoHashSize * infoHashes.size();
+
+        ByteBuffer byteBuffer = ByteBuffer.allocate(size);
+        byteBuffer.order(ByteOrder.BIG_ENDIAN);
+
+        byteBuffer.putLong(0, getConnectionId());
+        byteBuffer.putInt(8, getAction().value());
+        byteBuffer.putInt(12, getTransactionId());
+        int inicio = infoHashSize;
+        for (String infoHash : this.infoHashes) {
+            byteBuffer.position(inicio);
+            byteBuffer.put(infoHash.getBytes());
+            inicio += infoHashSize;
+        }
+
+        return byteBuffer.array();
     }
 
     public List<String> getInfoHashes() {

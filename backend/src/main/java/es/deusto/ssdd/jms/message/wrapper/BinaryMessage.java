@@ -29,7 +29,7 @@ public class BinaryMessage implements Serializable, IJMSMessage {
             //message is for me. otherwise, drop
             if (thisNode != null) {
                 //read binary content
-                System.out.println(thisNode.getTrackerId() + " Received: " + binaryContent.length + " bytes of binary message");
+                thisNode.addLogLine("Stream: Received: " + binaryContent.length + " bytes of binary message");
                 thisNode.overwriteLocalDatabase(binaryContent);
             }
         }
@@ -37,7 +37,7 @@ public class BinaryMessage implements Serializable, IJMSMessage {
 
     @Override
     public void onBroadcastEvent(String currentNodeId) {
-        System.out.println(sourceTrackerId + " Tracker data sync message broadcast event here");
+        TrackerInstance.getNode(currentNodeId).addLogLine("Stream: Tracker data sync message broadcast event here");
     }
 
     @Override

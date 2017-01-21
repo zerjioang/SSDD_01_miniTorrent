@@ -29,7 +29,7 @@ public class PeerInfo {
     }
 
     public String toString() {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
 
         buffer.append("ip: ");
         buffer.append(ByteUtils.inToIpAddress(this.ipAddress));

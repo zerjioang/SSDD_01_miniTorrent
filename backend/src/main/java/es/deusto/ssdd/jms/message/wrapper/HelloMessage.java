@@ -22,7 +22,6 @@ public class HelloMessage implements Serializable, IJMSMessage {
         TrackerInstance remoteNode = TrackerInstance.getNode(remoteNodeId);
         if (remoteNode != null) {
             thisNode.addRemoteNode(remoteNode);
-            thisNode.updateNodeTable(thisNode.getTrackerNodeList());
         }
         thisNode.beginMasterElectionProcess();
         thisNode._debug_election_result();
@@ -32,6 +31,7 @@ public class HelloMessage implements Serializable, IJMSMessage {
 
     @Override
     public void onBroadcastEvent(String currentNodeId) {
+        TrackerInstance.getNode(currentNodeId).addLogLine("Stream: HELLO MESSAGE SENT");
     }
 
     @Override

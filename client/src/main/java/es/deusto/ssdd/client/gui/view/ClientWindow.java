@@ -1,12 +1,13 @@
 package es.deusto.ssdd.client.gui.view;
 
-
 import es.deusto.ssdd.client.udp.client.PeerClient;
+import es.deusto.ssdd.client.udp.model.SharingFile;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.io.File;
 
 public class ClientWindow extends JFrame {
 
@@ -18,13 +19,15 @@ public class ClientWindow extends JFrame {
      * Create the frame.
      */
     public ClientWindow(PeerClient client) {
+        ClassLoader classLoader = ClientWindow.class.getClassLoader();
+        setIconImage(Toolkit.getDefaultToolkit().getImage(classLoader.getResource("img/logo.png")));
         this.client = client;
 
         //set system theme
         setSystemTheme();
 
-        setTitle("Torrent client");
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        setTitle("SSDD Torrent");
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setBounds(100, 100, 450, 300);
         setMinimumSize(new Dimension(800, 400));
 
@@ -45,16 +48,14 @@ public class ClientWindow extends JFrame {
         panel.add(tableScrollPane, BorderLayout.CENTER);
 
         activeTrackersTable = new JTable();
-        activeTrackersTableModel = new DefaultTableModel();
-        activeTrackersTableModel.setColumnIdentifiers(
+        activeTrackersTable.setModel(new DefaultTableModel(
+                new Object[][]{
+                        {"demo.pdf", "0kb", "0kb", "-", "1 Mb"},
+                },
                 new String[]{
                         "Torrent name", "Downloaded", "Uploaded", "Ratio", "Total size"
                 }
-        );
-        activeTrackersTable.setModel(activeTrackersTableModel);
-        activeTrackersTableModel.addColumn(new String[]{
-                "demo.pdf", "0kb", "0kb", "-", "1 Mb"
-        });
+        ));
         activeTrackersTable.repaint();
         tableScrollPane.setViewportView(activeTrackersTable);
 
@@ -104,6 +105,10 @@ public class ClientWindow extends JFrame {
         JMenu mnFile = new JMenu("File");
         menuBar.add(mnFile);
 
+        JMenuItem mntmNew = new JMenuItem("Abrir torrent");
+        mntmNew.addActionListener(ClientWindowEvents.MENU_OPEN_TORRENT.event(this));
+        mnFile.add(mntmNew);
+
         JMenuItem mntmExit = new JMenuItem("Exit");
         mntmExit.addActionListener(ClientWindowEvents.MENU_EXIT.event(this));
         mnFile.add(mntmExit);
@@ -125,6 +130,21 @@ public class ClientWindow extends JFrame {
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         contentPane.setLayout(new BorderLayout(0, 0));
         setContentPane(contentPane);
+
+        JPanel panelBar = new JPanel();
+        contentPane.add(panelBar, BorderLayout.NORTH);
+
+        JButton btnStart = new JButton("Start");
+        btnStart.addActionListener(ClientWindowEvents.BUTTON_START.event(this));
+        panelBar.add(btnStart);
+
+        JButton btnPause = new JButton("Pause");
+        btnPause.addActionListener(ClientWindowEvents.BUTTON_PAUSE.event(this));
+        panelBar.add(btnPause);
+
+        JButton btnStop = new JButton("Stop");
+        btnStop.addActionListener(ClientWindowEvents.BUTTON_STOP.event(this));
+        panelBar.add(btnStop);
         return contentPane;
     }
 
@@ -139,5 +159,16 @@ public class ClientWindow extends JFrame {
                 | UnsupportedLookAndFeelException e) {
             System.err.println(e.getLocalizedMessage());
         }
+    }
+
+    public SharingFile openFile(File torrent) {
+        return client.readTorrent(torrent);
+    }
+
+    public void startDownloading(SharingFile shareFile) {
+        //add file to peer logic
+        client.startDownloading(shareFile);
+        //add file info as new row in table
+
     }
 }

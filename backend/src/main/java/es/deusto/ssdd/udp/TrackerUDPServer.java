@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.ServerSocket;
+import java.net.MulticastSocket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
@@ -21,22 +21,32 @@ public class TrackerUDPServer {
     private static final int MIN_PORT = 1000;
     private static final int MAX_PORT = 5000;
     private static final long TWO_MINUTES_MILLIS = 2 * 60 * 1000;
+    /*
+    In IPv4, any IP address in the range 224.0.0.0 to 239.255.255.255 can be used as a multicast address to send a datagram packet.
+    The IP address 224.0.0.0 is reserved and you should not use it in your application.
+     */
+    private static final String MULTICAST_IP = "224.0.0.1";
     private final TrackerInstance trackerInstance;
     private final String ip;
     private int port;
-    private ServerSocket welcomeSocket;
+    private MulticastSocket serverSocket;
     private HashMap<Long, Long> connectionIdList;
+    private boolean multicastEnabled;
+    private boolean keepServerAlive;
 
     public TrackerUDPServer(TrackerInstance trackerInstance, String ip) {
         this.trackerInstance = trackerInstance;
         this.ip = ip;
         this.port = MIN_PORT + (int) (Math.random() * ((MAX_PORT - MIN_PORT) + 1));
+        this.port = 1234;
         this.connectionIdList = new HashMap<>();
+        this.multicastEnabled = true;
+        this.keepServerAlive = true;
     }
 
     public void backgroundDispatch() throws IOException {
         new Thread(() -> {
-            System.out.println(trackerInstance.getTrackerId() + " [Starting UDP server on port " + port + "]");
+            System.out.println(this.trackerInstance.getTrackerId() + "\t[Starting UDP server on port " + port + "]");
             try {
                 startServer();
             } catch (IOException e) {
@@ -46,21 +56,67 @@ public class TrackerUDPServer {
     }
 
     private void startServer() throws IOException {
-        DatagramSocket serverSocket = new DatagramSocket(this.port);
+        if (multicastEnabled) {
+            startMulticastServer();
+        } else {
+            startStandardServer();
+        }
+    }
+
+    private void startMulticastServer() throws IOException {
+        InetAddress mcIPAddress = null;
+        mcIPAddress = InetAddress.getByName(MULTICAST_IP);
+        serverSocket = new MulticastSocket(this.port);
+        System.out.println(this.trackerInstance.getTrackerId() + "\tMulticast UDP server running at:" + serverSocket.getLocalSocketAddress());
+        //joint ot multicast group
+        serverSocket.joinGroup(mcIPAddress);
+        //buffer
         byte[] receiveData = new byte[1024];
-        while(true) {
+        //start listening
+        while (keepServerAlive) {
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
             serverSocket.receive(receivePacket);
             //get client address for response
-            InetAddress clientAddress = receivePacket.getAddress();
+            InetAddress clientAddress;
+            clientAddress = receivePacket.getAddress();
             int clientPort = receivePacket.getPort();
             //read received data as bytearray
             byte[] receivedBytes = receivePacket.getData();
-            //parse data
+            processData(receivedBytes, clientAddress, clientPort, serverSocket);
+        }
+        //once server is stopped
+        serverSocket.leaveGroup(mcIPAddress);
+        serverSocket.close();
+    }
+
+    private void startStandardServer() throws IOException {
+        DatagramSocket serverSocket = new DatagramSocket(this.port);
+        System.out.println(this.trackerInstance.getTrackerId() + "\tStandard UDP server running at:" + serverSocket.getLocalSocketAddress());
+        //buffer
+        byte[] receiveData = new byte[1024];
+        while (keepServerAlive) {
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            serverSocket.receive(receivePacket);
+            //get client address for response
+            InetAddress clientAddress;
+            clientAddress = receivePacket.getAddress();
+            int clientPort = receivePacket.getPort();
+            //read received data as bytearray
+            byte[] receivedBytes = receivePacket.getData();
+            processData(receivedBytes, clientAddress, clientPort, serverSocket);
+        }
+        //once server is stopped
+        serverSocket.close();
+    }
+
+    private void processData(byte[] receivedBytes, InetAddress clientAddress, int clientPort, DatagramSocket serverSocket) throws IOException {
+        //parse data
+        if (this.trackerInstance.isMaster()) {
             byte[] response = parseData(receivedBytes);
             //send response
-            if(response!=null && response.length>0){
+            if (response != null && response.length > 0) {
                 DatagramPacket sendPacket = new DatagramPacket(response, response.length, clientAddress, clientPort);
+                System.out.println(getTrackerId() + "\t Sending message to client " + clientAddress.getHostAddress() + " on port " + clientPort);
                 serverSocket.send(sendPacket);
             }
         }
@@ -70,32 +126,28 @@ public class TrackerUDPServer {
         //first, deserialize data
         try {
             ByteBuffer buffer = this.deserialize(receivedBytes);
-            if(buffer!=null){
+            if (buffer != null) {
                 //step 2: convert generic buffer to proper object type. get action id
                 int value = buffer.getInt(8);
                 //parse byte array depending on its action id value
                 BitTorrentUDPRequestMessage parsedRequestMessage = PeerRequestParser.parse(value, receivedBytes);
-                if(parsedRequestMessage!=null){
+                if (parsedRequestMessage != null) {
                     //validate received message
                     boolean valid = PeerRequestParser.validate(this, value, parsedRequestMessage);
-                    if(valid){
+                    if (valid) {
                         PeerRequestParser.triggerOnReceiveEvent(this, value, parsedRequestMessage);
                         //valid message. response
                         return PeerRequestParser.getResponse(this, value, parsedRequestMessage);
+                    } else {
+                        System.err.println(this.trackerInstance.getTrackerId() + "\tInvalid message detected of type " + parsedRequestMessage.getClass().getSimpleName());
+                        return PeerRequestParser.getError(value, false, parsedRequestMessage, "invalid message");
                     }
-                    else{
-                        System.err.println("Invalid message detected of type "+parsedRequestMessage.getClass().getSimpleName());
-                        return PeerRequestParser.getError(value, false, parsedRequestMessage);
-                    }
-                }
-                else{
-                    System.err.println("NULL message detected ");
-                    return PeerRequestParser.getError(value, false, null);
+                } else {
+                    System.err.println(this.trackerInstance.getTrackerId() + "\tNULL message detected ");
+                    return PeerRequestParser.getError(value, false, null, "Malformed message");
                 }
             }
-        } catch (IOException e) {
-            System.err.println(e.getLocalizedMessage());
-        } catch (ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException e) {
             System.err.println(e.getLocalizedMessage());
         }
         return null;
@@ -114,28 +166,31 @@ public class TrackerUDPServer {
     public void stopService() {
         //stop the main listener thread
         //close the socket
-        try {
-            welcomeSocket.close();
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
-            e.printStackTrace();
-        }
-        System.out.println(trackerInstance.getTrackerId() + " UDP Server stopped");
+        serverSocket.close();
+        System.out.println(this.trackerInstance.getTrackerId() + "\tUDP Multicast server stopped");
     }
 
     public void savePeerIdForValidation(long randomID) {
         this.connectionIdList.put(randomID, System.currentTimeMillis());
     }
 
-    public boolean isIdStillValid(long id){
+    public boolean isConnectionIdStillValid(long id) {
         Long firstSeenAt = this.connectionIdList.get(id);
-        if(firstSeenAt!=null){
+        if (firstSeenAt != null) {
             //get current time
             long currentTime = System.currentTimeMillis();
             //calculate difference
-            long diff = Math.abs(firstSeenAt.longValue()-currentTime);
+            long diff = Math.abs(firstSeenAt - currentTime);
             return diff <= TWO_MINUTES_MILLIS;
         }
         return false;
+    }
+
+    public String getTrackerId() {
+        return this.trackerInstance.getTrackerId();
+    }
+
+    public TrackerInstance getTracker() {
+        return this.trackerInstance;
     }
 }

@@ -48,14 +48,15 @@ public class AnnounceRequest extends BitTorrentUDPRequestMessage {
             buffer.order(ByteOrder.BIG_ENDIAN);
 
             AnnounceRequest msg = new AnnounceRequest();
-            msg.infoHash = new byte[20];
+            byte[] infoHash = new byte[20];
             byte[] peerId = new byte[20];
 
             msg.setConnectionId(buffer.getLong(0));
             msg.setAction(Action.valueOf(buffer.getInt(8)));
             msg.setTransactionId(buffer.getInt(12));
             buffer.position(16);
-            buffer.get(msg.infoHash);
+            buffer.get(infoHash);
+            msg.setInfoHash(infoHash);
             buffer.position(36);
             buffer.get(peerId);
             msg.setPeerId(ByteBuffer.wrap(peerId).getInt()+"");
@@ -63,14 +64,15 @@ public class AnnounceRequest extends BitTorrentUDPRequestMessage {
             msg.setLeft(buffer.getLong(64));
             msg.setUploaded(buffer.getLong(72));
             msg.setEvent(Event.values()[(buffer.getInt(80))]);
+
             PeerInfo info = new PeerInfo();
             info.setIpAddress(buffer.getInt(84));
+            info.setPort(buffer.getShort(96));
+            msg.setPeerInfo(info);
 
             msg.setKey(buffer.getInt(88));
             msg.setNumWant(buffer.getInt(92));
-            info.setPort(buffer.getShort(96));
 
-            msg.setPeerInfo(info);
             return msg;
         } catch (Exception ex) {
             System.out.println("# Error parsing ConnectRequest message: " + ex.getMessage());

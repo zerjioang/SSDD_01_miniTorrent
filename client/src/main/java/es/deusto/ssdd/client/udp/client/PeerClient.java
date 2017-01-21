@@ -1,13 +1,15 @@
 package es.deusto.ssdd.client.udp.client;
 
+import bittorrent.metainfo.InfoDictionarySingleFile;
+import bittorrent.metainfo.MetainfoFile;
+import bittorrent.metainfo.handler.MetainfoHandlerSingleFile;
 import bittorrent.udp.*;
 import es.deusto.ssdd.client.udp.model.SharingFile;
 import es.deusto.ssdd.client.udp.model.TrackerResponseParser;
 
+import java.io.File;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -20,13 +22,14 @@ import java.util.TimerTask;
  */
 public class PeerClient {
 
-    private static final int MIN_PORT = 1000;
-    private static final int MAX_PORT = 5000;
     private static final long ID_UPDATE_FREQ_MS = 60 * 1000; //1 minute
+    private static final long UPDATE_ANNOUNCE_STATUS_FREQ_MS = 10 * 1000; //10 s
+    private static final String MULTICAST_IP = "224.0.0.1";
+    private static final int MULTICAST_PORT = 1234;
 
     private ArrayList<SharingFile> sharingFiles;
-    private final String ip;
-    private final int port;
+    private String ip;
+    private int port;
     private boolean keepListening;
     private boolean needToConnect;
     private boolean needToAnnounce;
@@ -35,54 +38,109 @@ public class PeerClient {
     private int peerId;
     private InetAddress serverHost;
     private DatagramSocket clientSocket;
+    private boolean multicastEnabled;
 
-    public PeerClient(String ip, int port) {
-        this.ip = ip;
-        this.port = port;
+    public PeerClient() {
         this.keepListening = true;
         this.needToConnect = true;
         this.needToAnnounce = true;
-        this.sharingFiles = new ArrayList<SharingFile>();
+        this.sharingFiles = new ArrayList<>();
         this.peerId = -1;
-        //this.port = MIN_PORT + (int) (Math.random() * ((MAX_PORT - MIN_PORT) + 1));
+        this.multicastEnabled = true;
+        this.port = MULTICAST_PORT;
+    }
+
+    public PeerClient(String ip, int port) {
+        this();
+        this.ip = ip;
+        this.port = port;
+    }
+
+    public static final int getRandomID() {
+        //El primer paso para comenzar la comunicación es la obtención de un ID de conexión (connection_id). Este ID se utiliza para garantizar el Peer es quién dice ser y no es suplantado. El ID debe renovarse periódicamente.
+        Random random = new Random();
+        return random.nextInt(Integer.MAX_VALUE);
     }
 
     public void connect() throws IOException {
+        new Thread(() -> {
+            System.out.println("PEER CLIENT: Running udp client");
+            //run task for id update every 1 minute
+            updateClientIDTimer();
+            try {
+                createSocket();
+                //get server ip
+                setRemoteHost();
+                //listen for new messages
+                startListening();
+                //close connection. free resources
+                close();
+            } catch (IOException e) {
+                System.err.println(e.getLocalizedMessage());
+            }
+        }).start();
+    }
 
-        //run task for id update every 1 minute
-        updateIdTask();
-
-        System.out.println("PEER CLIENT: Running demo udp client");
+    private void createSocket() throws SocketException {
         clientSocket = new DatagramSocket();
-        serverHost = InetAddress.getByName(ip);
+    }
 
-        //listen for new messages
+    private void startListening() throws IOException {
         byte[] receiveData = new byte[1024];
         while(keepListening){
-            if(needToConnect){
-                connectionRequest(clientSocket, serverHost);
-            }
-            else if(needToAnnounce){
-                for(SharingFile file : sharingFiles){
-                    //realizar una solicitud de obtencion de listado de peers por cada fichero que se quiere descargar
-                    announceRequest(file, clientSocket, serverHost, AnnounceRequest.Event.NONE);
-                }
-                //todo no esta bien del todo ya que o se envian todos de golpe o bien o nada
-                //si falla uno, no se vuelve a enviar
-                needToAnnounce = false;
-            }
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            clientSocket.receive(receivePacket);
+            sendMessageIfNeeded();
+            DatagramPacket receivePacket = readIncomingPacket(receiveData);
             byte[] receivedData = receivePacket.getData();
             byte[] response = parseData(receivedData);
+            processResponse(response);
         }
-        //close connection. free resources
+    }
+
+    private void sendMessageIfNeeded() throws IOException {
+        if (needToConnect) {
+            connectionRequest(clientSocket, serverHost);
+        }
+    }
+
+    private boolean evaluateNeedToAnnounce() {
+        boolean announce = false;
+        for (SharingFile sh : sharingFiles) {
+            announce |= sh.needsToBeAnnounced();
+        }
+        return announce;
+    }
+
+    private void processResponse(byte[] response) {
+        if (response != null) {
+            //sendPacket(clientSocket, serverHost, response);
+        }
+    }
+
+    private DatagramPacket readIncomingPacket(byte[] receiveData) throws IOException {
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+        clientSocket.receive(receivePacket);
+        return receivePacket;
+    }
+
+    private void close() {
         clientSocket.close();
     }
 
-    private void updateIdTask() {
+    private void setRemoteHost() throws UnknownHostException {
+        if (multicastEnabled) {
+            serverHost = InetAddress.getByName(MULTICAST_IP);
+        } else {
+            serverHost = InetAddress.getByName(ip);
+        }
+    }
+
+    private void updateClientIDTimer() {
         Timer timer = new Timer();
         timer.schedule(this.updateId(), 0, ID_UPDATE_FREQ_MS);
+        //execute one announce request timer task for each sharing file
+        for (SharingFile f : sharingFiles) {
+            timer.schedule(this.updateAnnounceStatus(f), f.getUpdateInterval());
+        }
     }
 
     private TimerTask updateId() {
@@ -97,6 +155,37 @@ public class PeerClient {
                         connectionRequest(clientSocket, serverHost);
                     } catch (IOException e) {
                         System.err.println("PEER CLIENT: IO Exception when requesting new ID");
+                    }
+                }
+            }
+        };
+    }
+
+    private TimerTask updateAnnounceStatus(SharingFile file) {
+        return new TimerTask() {
+            @Override
+            public void run() {
+                //ejecutar contenido solo si ya se tiene una conection
+                if (!needToConnect) {
+                    if (file == null) {
+                        //update announce of all files
+                        for (SharingFile f : sharingFiles) {
+                            //realizar una solicitud de obtencion de listado de peers por cada fichero que se quiere descargar
+                            updateFileAnnounce(f);
+                        }
+                    } else {
+                        updateFileAnnounce(file);
+                    }
+                    needToAnnounce = evaluateNeedToAnnounce();
+                }
+            }
+
+            private void updateFileAnnounce(SharingFile file) {
+                if (file.needsToBeAnnounced()) {
+                    try {
+                        announceRequest(file, clientSocket, serverHost, AnnounceRequest.Event.NONE);
+                    } catch (IOException e) {
+                        System.err.println(e.getLocalizedMessage());
                     }
                 }
             }
@@ -125,7 +214,6 @@ public class PeerClient {
         request.setAction(BitTorrentUDPMessage.Action.ANNOUNCE);
         request.setTransactionId(this.getTransactionId());
         //infohash sobre el fichero a obtener la informacion
-        //TODO leer infohash
         request.setInfoHash(file.getInfohash());
         //peer id as string
         request.setPeerId(String.valueOf(this.peerId));
@@ -155,27 +243,29 @@ public class PeerClient {
         //first, deserialize data
         try {
             ByteBuffer buffer = this.deserialize(receivedBytes);
-            if(buffer!=null){
-                //step 2: convert generic buffer to proper object type. get action id
-                int value = buffer.getInt(8);
-                //parse byte array depending on its action id value
-                BitTorrentUDPMessage parsedRequestMessage = TrackerResponseParser.parse(value, receivedBytes);
-                //validate received message
-                boolean valid = TrackerResponseParser.validate(value, parsedRequestMessage);
-                if(valid){
-                    TrackerResponseParser.triggerOnReceiveEvent(this, value, parsedRequestMessage);
-                    //valid message. response
-                    return TrackerResponseParser.getRequest(value, parsedRequestMessage);
-                }
-                else{
-                    System.err.println("PEER CLIENT: Invalid message detected of type "+parsedRequestMessage.getClass().getSimpleName());
-                    return TrackerResponseParser.getError(value, valid, parsedRequestMessage);
-                }
+            return convertBuffer2Object(receivedBytes, buffer);
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println(e.getLocalizedMessage());
+        }
+        return null;
+    }
+
+    private byte[] convertBuffer2Object(byte[] receivedBytes, ByteBuffer buffer) {
+        if (buffer != null) {
+            //step 2: convert generic buffer to proper object type. get action id
+            int value = buffer.get(3);
+            //parse byte array depending on its action id value
+            BitTorrentUDPMessage parsedRequestMessage = TrackerResponseParser.parse(value, receivedBytes);
+            //validate received message
+            boolean valid = TrackerResponseParser.validate(value, parsedRequestMessage);
+            if (valid) {
+                TrackerResponseParser.triggerOnReceiveEvent(this, value, parsedRequestMessage);
+                //valid message. response
+                return TrackerResponseParser.getRequest(value, parsedRequestMessage);
+            } else {
+                System.err.println("PEER CLIENT: Invalid message detected of type " + parsedRequestMessage.getClass().getSimpleName());
+                return TrackerResponseParser.getError(value, false, parsedRequestMessage);
             }
-        } catch (IOException e) {
-            System.err.println(e.getLocalizedMessage());
-        } catch (ClassNotFoundException e) {
-            System.err.println(e.getLocalizedMessage());
         }
         return null;
     }
@@ -183,14 +273,8 @@ public class PeerClient {
     private void sendPacket(DatagramSocket clientSocket, InetAddress serverHost, BitTorrentUDPRequestMessage request) throws IOException {
         byte[] requestBytes = request.getBytes();
         DatagramPacket packet = new DatagramPacket(requestBytes, requestBytes.length, serverHost, port);
-        System.out.println("PEER CLIENT: Sending "+request.getClass().getSimpleName()+" packet to "+ip+" on port "+port);
+        System.out.println("PEER CLIENT: Sending " + request.getClass().getSimpleName() + " packet to " + serverHost.getHostAddress() + " on port " + port);
         clientSocket.send(packet);
-    }
-
-    public static final int getRandomID() {
-        //El primer paso para comenzar la comunicación es la obtención de un ID de conexión (connection_id). Este ID se utiliza para garantizar el Peer es quién dice ser y no es suplantado. El ID debe renovarse periódicamente.
-        Random random = new Random();
-        return random.nextInt(Integer.MAX_VALUE);
     }
 
     private ByteBuffer deserialize(byte[] data) throws IOException, ClassNotFoundException {
@@ -241,12 +325,12 @@ public class PeerClient {
         return getConnectionResponse().getTransactionId();
     }
 
-    public void setConnectionResponse(ConnectResponse connectionResponse) {
-        this.connectionResponse = connectionResponse;
-    }
-
     public ConnectResponse getConnectionResponse() {
         return connectionResponse;
+    }
+
+    public void setConnectionResponse(ConnectResponse connectionResponse) {
+        this.connectionResponse = connectionResponse;
     }
 
     public void shareFile(SharingFile file) {
@@ -257,5 +341,34 @@ public class PeerClient {
 
     public void setPeerId(int peerId) {
         this.peerId = peerId;
+    }
+
+    public SharingFile readTorrent(File torrent) {
+        //leer un archivo de la carpeta resources
+        MetainfoHandlerSingleFile handler = new MetainfoHandlerSingleFile();
+        //read from resouces
+        handler.parseTorrenFile(torrent.getAbsolutePath());
+        MetainfoFile<InfoDictionarySingleFile> meta = handler.getMetainfo();
+        SharingFile sharingFile = new SharingFile(meta.getInfo().getName(), meta.getInfo().getInfoHash(), meta.getInfo().getLength());
+        sharingFile.setMetaInfo(meta);
+        return sharingFile;
+    }
+
+    public void startDownloading(SharingFile shareFile) {
+        this.sharingFiles.add(shareFile);
+    }
+
+    public void test() throws IOException {
+        //leer un archivo de la carpeta resources
+        MetainfoHandlerSingleFile handler = new MetainfoHandlerSingleFile();
+        //read from resouces
+        ClassLoader classLoader = PeerClient.class.getClassLoader();
+        File file = new File(classLoader.getResource("torrent/ubuntu-16.04.1-desktop-amd64.iso.torrent").getFile());
+        handler.parseTorrenFile(file.getPath());
+        MetainfoFile<InfoDictionarySingleFile> meta = handler.getMetainfo();
+        SharingFile sharingFile = new SharingFile(meta.getInfo().getName(), meta.getInfo().getInfoHash(), meta.getInfo().getLength());
+        sharingFile.setMetaInfo(meta);
+        this.shareFile(sharingFile);
+        this.connect();
     }
 }

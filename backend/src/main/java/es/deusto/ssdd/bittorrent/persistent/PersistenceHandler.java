@@ -25,7 +25,7 @@ public class PersistenceHandler {
 
     public PersistenceHandler(TrackerInstance tracker) {
         this.tracker = tracker;
-        System.out.println(tracker.getTrackerId() + " loading persistence handler");
+        tracker.addLogLine("Starting persistence handler...");
         this.loaded = false;
         init(tracker.getTrackerId());
     }
@@ -36,7 +36,7 @@ public class PersistenceHandler {
             Class.forName(DRIVER_NAME);
             databaseName = trackerId + ".db";
             connection = DriverManager.getConnection(DATABASE_PATH + databaseName);
-            System.out.println("Opened database successfully");
+            tracker.addLogLine("Opened database successfully");
             createModel();
             this.loaded = true;
         } catch (Exception e) {
@@ -49,8 +49,9 @@ public class PersistenceHandler {
             connection.createStatement().execute("CREATE TABLE SWARM(ID INTEGER PRIMARY KEY AUTOINCREMENT, FILENAME VARCHAR(255), FILESIZE INT, PEER INT);");
             connection.createStatement().execute("CREATE TABLE PEER(ID INTEGER PRIMARY KEY AUTOINCREMENT, IP VARCHAR(100) NOT NULL, PORT INT NOT NULL);");
             connection.createStatement().execute("CREATE TABLE SWARM_PEERS(ID INTEGER PRIMARY KEY, PEER_ID INTEGER NOT NULL, SWARM_ID INTEGER NOT NULL, PENDING_DATA VARCHAR(255), DOWNLOADED_DATA VARCHAR(255), FOREIGN KEY(PEER_ID) REFERENCES PEER(id), FOREIGN KEY(SWARM_ID) REFERENCES SWARM(ID));");
+            tracker.addLogLine("Debug: Database model created.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            tracker.addLogLine("Error: " + e.getLocalizedMessage());
         }
     }
 
@@ -72,19 +73,19 @@ public class PersistenceHandler {
     }
 
     public void overwrite(byte[] data) {
-        System.out.println(tracker.getTrackerId() + " overwritting LOCAL DATABASE with REMOTE");
+        tracker.addLogLine("Debug: overwritting LOCAL DATABASE with REMOTE");
         try {
             //close connection
             connection.close();
             //delete file
             boolean deleted = new File(databaseName).delete();
             if (deleted) {
-                System.out.println(tracker.getTrackerId() + " Old file deleted");
+                tracker.addLogLine("Debug: old database deleted");
                 //create new one
                 Files.write(Paths.get(databaseName), data);
-                System.out.println(tracker.getTrackerId() + " New file created");
+                tracker.addLogLine("Debug: new database created");
             } else {
-                System.out.println(tracker.getTrackerId() + " Something happen when deleting. Could not complete Database Overwrite");
+                tracker.addLogLine("Error: something happen when deleting. Could not complete Database Overwrite");
             }
         } catch (SQLException | IOException e) {
             System.err.println(e.getLocalizedMessage());
@@ -92,25 +93,26 @@ public class PersistenceHandler {
     }
 
     public void deleteDatabase() {
-        System.out.println(tracker.getTrackerId() + " DELETE DATABASE");
+        tracker.addLogLine("Debug: DELETE DATABASE");
         try {
             //close connection
             connection.close();
             //delete file
             boolean deleted = new File(databaseName).delete();
             if (deleted) {
-                System.out.println(tracker.getTrackerId() + " Database file deleted");
+                tracker.addLogLine("Debug: Database file deleted");
             }
         } catch (SQLException e) {
-            System.err.println(e.getLocalizedMessage());
+            tracker.addLogLine("Error: " + e.getLocalizedMessage());
         }
     }
 
     public void sync(String query) {
         try {
+            tracker.addLogLine("Debug: executing query for db sync");
             connection.createStatement().execute(query);
         } catch (SQLException e) {
-            System.err.println(e.getLocalizedMessage());
+            tracker.addLogLine("Error: " + e.getLocalizedMessage());
         }
     }
 }

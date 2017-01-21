@@ -1,7 +1,6 @@
 package es.deusto.ssdd.gui.view;
 
 import es.deusto.ssdd.jms.TrackerInstance;
-import es.deusto.ssdd.jms.model.TrackerStatus;
 
 import javax.swing.*;
 import java.awt.event.ActionListener;
@@ -16,21 +15,21 @@ public enum TrackerGUIEvents {
         @Override
         public ActionListener event(TrackerWindow window) {
             return actionEvent -> {
-                System.out.println("Configure tracker event detected");
+                window.addLogLine("Configure tracker event detected");
             };
         }
     }, MENU_ABOUT {
         @Override
         public ActionListener event(TrackerWindow window) {
             return actionEvent -> {
-                System.out.println("menu about event detected");
+                window.addLogLine("menu about event detected");
             };
         }
     }, MENU_EXIT {
         @Override
         public ActionListener event(TrackerWindow window) {
             return actionEvent -> {
-                System.out.println("Menu exit event detected");
+                window.addLogLine("Menu exit event detected");
                 forceTrackerStop(window);
                 window.dispose();
             };
@@ -39,8 +38,16 @@ public enum TrackerGUIEvents {
         @Override
         public ActionListener event(TrackerWindow window) {
             return actionEvent -> {
-                System.out.println("Menu force stop event detected");
+                window.addLogLine("Menu force stop event detected");
                 forceTrackerStop(window);
+                window.dispose();
+            };
+        }
+    }, MENU_SHOW_LOG {
+        @Override
+        public ActionListener event(TrackerWindow window) {
+            return actionEvent -> {
+                window.showLogWindow();
             };
         }
     };
@@ -61,7 +68,7 @@ public enum TrackerGUIEvents {
     private static void executeOnResult(TrackerWindow window, int result) {
         if (result == JOptionPane.OK_OPTION) {
             window.getInstance().sayGoodByeToCluster();
-            window.updateTrackerStatus(TrackerStatus.OFFLINE);
+            window.update();
         }
     }
 

@@ -27,13 +27,14 @@ public class DataSyncMessage implements Serializable, IJMSMessage {
             if (thisNode != null && this.query != null) {
                 //update data sync request on local storage
                 thisNode.syncData(query);
+                thisNode.addLogLine("Stream: data sync message received from " + sourceTrackerId);
             }
         }
     }
 
     @Override
     public void onBroadcastEvent(String currentNodeId) {
-        System.out.println(currentNodeId + " DATA_SYNC trigger ");
+        TrackerInstance.getNode(currentNodeId).addLogLine("Stream: DATA_SYNC trigger ");
     }
 
     @Override

@@ -25,7 +25,7 @@ public class KeepAliveDaemon implements Runnable {
 
     @Override
     public void run() {
-        System.out.println(daemonOwner.getTrackerId() + " KEEP_ALIVE Daemon ACTIVE");
+        daemonOwner.addLogLine("Debug: KEEP_ALIVE Daemon ACTIVE");
         try {
             while (daemonOwner.isAlive()) {
                 sendKeepAliveMessage();
@@ -34,11 +34,11 @@ public class KeepAliveDaemon implements Runnable {
         } catch (JMSException e) {
             e.printStackTrace();
         }
-        System.out.println(daemonOwner.getTrackerId() + " KEEP_ALIVE Daemon STOPPED");
+        daemonOwner.addLogLine("Debug: KEEP_ALIVE Daemon STOPPED");
     }
 
     private void updateOtherNodesKeepAliveStatus() {
-        System.out.println(daemonOwner.getTrackerId() + " updating tracker node list keep alive status");
+        daemonOwner.addLogLine("Debug updating tracker node list keep alive status");
 
         ArrayList<TrackerInstance> instancesToRemove = new ArrayList<>();
 

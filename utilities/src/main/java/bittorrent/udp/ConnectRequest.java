@@ -2,7 +2,6 @@ package bittorrent.udp;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Random;
 
 /**
  * Offset  Size            	Name            	Value
@@ -35,22 +34,6 @@ public class ConnectRequest extends BitTorrentUDPRequestMessage {
             System.out.println("# Error parsing ConnectRequest message: " + ex.getMessage());
         }
         return null;
-    }
-
-    public static void main(String[] args) {
-        Random random = new Random();
-        int transactionID = random.nextInt(Integer.MAX_VALUE);
-
-        ConnectRequest connect = new ConnectRequest();
-        connect.setTransactionId(transactionID);
-
-        System.out.println(connect.getAction() + " " + connect.getConnectionId() + " " + connect.getTransactionId());
-
-        byte[] bytes = connect.getBytes();
-
-        ConnectRequest connect2 = ConnectRequest.parse(bytes);
-
-        System.out.println(connect2.getAction() + " " + connect2.getConnectionId() + " " + connect2.getTransactionId());
     }
 
     @Override

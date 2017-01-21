@@ -1,5 +1,6 @@
 package es.deusto.ssdd.jms.listener;
 
+import es.deusto.ssdd.jms.TrackerInstance;
 import es.deusto.ssdd.jms.message.IJMSMessage;
 import es.deusto.ssdd.jms.model.TrackerDaemonSpec;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -29,12 +30,12 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
             }
             this.connectionId = connectionId;
         } catch (JMSException e) {
-            e.printStackTrace();
+            TrackerInstance.getNode(trackerId).addLogLine("Error: " + e.getLocalizedMessage());
         }
     }
 
     public void run() {
-        System.out.println(trackerId + " JMS " + getMessageListenerId() + " Daemon listener [STARTED]");
+        TrackerInstance.getNode(trackerId).addLogLine("Debug: JMS " + getMessageListenerId() + " Daemon listener [STARTED]");
         runDaemonListener();
     }
 
@@ -137,37 +138,34 @@ public class JMSMessageListener implements Runnable, ExceptionListener, MessageL
     }
 
     public synchronized void onException(JMSException ex) {
-        System.err.println(trackerId + "# JMS Listener (" + getMessageListenerId() + ") Daemon Exception occured: " + ex.getMessage());
+        TrackerInstance.getNode(trackerId).addLogLine("Error: JMS Listener (" + getMessageListenerId() + ") Daemon Exception occured: " + ex.getMessage());
     }
 
     @Override
     public void onMessage(Message message) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                if (message != null) {
-                    try {
-                        if (message.getClass().equals(ActiveMQObjectMessage.class)) {
-                            ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
-                            Object o = objectMessage.getObject();
-                            if (o != null) {
-                                IJMSMessage receivedMessage = (IJMSMessage) o;
-                                if (isReceivedMessageMine(receivedMessage)) {
-                                    //drop message
-                                    //System.out.println(trackerId + " << DROP << " + getMessageListenerId() + " << " + receivedMessage.getPrintable());
-                                } else {
-                                    //log communication
-                                    System.out.println(trackerId + " << RECEIVED << " + getMessageListenerId() + " << " + receivedMessage.getPrintable());
-                                    //trigger action
-                                    receivedMessage.onReceivedEvent(getTrackerId());
-                                }
+        new Thread(() -> {
+            if (message != null) {
+                try {
+                    if (message.getClass().equals(ActiveMQObjectMessage.class)) {
+                        ActiveMQObjectMessage objectMessage = (ActiveMQObjectMessage) message;
+                        Object o = objectMessage.getObject();
+                        if (o != null) {
+                            IJMSMessage receivedMessage = (IJMSMessage) o;
+                            if (isReceivedMessageMine(receivedMessage)) {
+                                //drop message
+                                //System.out.println(trackerId + " << DROP << " + getMessageListenerId() + " << " + receivedMessage.getPrintable());
+                            } else {
+                                //log communication
+                                TrackerInstance.getNode(trackerId).addLogLine("Stream: << RECEIVED << " + getMessageListenerId() + " << " + receivedMessage.getPrintable());
+                                //trigger action
+                                receivedMessage.onReceivedEvent(getTrackerId());
                             }
-                        } else {
-                            System.out.println("<- Received a Message: " + message);
                         }
-                    } catch (JMSException ex) {
-                        System.err.println("# JMS Listener MESSAGE PARSING Exception occured: " + ex.getMessage());
+                    } else {
+                        TrackerInstance.getNode(trackerId).addLogLine("Stream:<- Received a Message: " + message);
                     }
+                } catch (JMSException ex) {
+                    TrackerInstance.getNode(trackerId).addLogLine("Error: JMS Listener MESSAGE PARSING Exception occured: " + ex.getMessage());
                 }
             }
         }).start();

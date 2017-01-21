@@ -13,6 +13,8 @@ public class SharingFile {
     private long downloadedBytes, leftBytes, uploadedBytes, totalBytes;
     private boolean needToAnnounce;
     private MetainfoFile<InfoDictionarySingleFile> metaInfo;
+    private boolean announce;
+    private long updateInterval;
 
     public SharingFile() {
         needToAnnounce = true;
@@ -26,6 +28,7 @@ public class SharingFile {
         this.leftBytes = totalBytes;
         this.uploadedBytes = 0;
         this.totalBytes = totalBytes;
+        this.announce = true;
     }
 
     public String getFilename() {
@@ -72,11 +75,36 @@ public class SharingFile {
         return infohash;
     }
 
+    public MetainfoFile<InfoDictionarySingleFile> getMetaInfo() {
+        return metaInfo;
+    }
+
     public void setMetaInfo(MetainfoFile<InfoDictionarySingleFile> metaInfo) {
         this.metaInfo = metaInfo;
     }
 
-    public MetainfoFile<InfoDictionarySingleFile> getMetaInfo() {
-        return metaInfo;
+    public boolean needsToBeAnnounced() {
+        return this.announce;
+    }
+
+    public void setNeedToAnnounce(boolean needToAnnounce) {
+        this.needToAnnounce = needToAnnounce;
+    }
+
+    public long getUpdateInterval() {
+        return updateInterval;
+    }
+
+    public void setUpdateInterval(long updateInterval) {
+        this.updateInterval = updateInterval;
+    }
+
+    public String getInfoString() {
+        return "Filename: " + this.filename + "\r\n" +
+                "Total bytes: " + this.totalBytes + "\r\n" +
+                "Encoding: " + this.metaInfo.getEncoding() + "\r\n" +
+                "Created by: " + this.metaInfo.getCreatedBy() + "\r\n" +
+                "MD5: " + this.metaInfo.getInfo().getMd5sum() + "\r\n" +
+                "Announce URL: " + this.metaInfo.getAnnounce() + "\r\n";
     }
 }

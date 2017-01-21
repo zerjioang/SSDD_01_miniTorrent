@@ -30,7 +30,6 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
             if (!alreadyDiscovered) {
                 thisNode.addRemoteNode(remoteNode);
             }
-            thisNode.updateNodeTable(thisNode.getTrackerNodeList());
         }
     }
 
@@ -42,6 +41,7 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
 
     @Override
     public void onBroadcastEvent(String currentNodeId) {
+        TrackerInstance.getNode(currentNodeId).addLogLine("Stream: KEEP ALIVE SENT");
     }
 
     @Override
