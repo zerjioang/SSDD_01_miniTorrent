@@ -4,6 +4,7 @@ import bittorrent.metainfo.InfoDictionarySingleFile;
 import bittorrent.metainfo.MetainfoFile;
 import bittorrent.metainfo.handler.MetainfoHandlerSingleFile;
 import bittorrent.udp.*;
+import bittorrent.util.ByteUtils;
 import es.deusto.ssdd.client.udp.model.SharingFile;
 import es.deusto.ssdd.client.udp.model.TrackerResponseParser;
 
@@ -36,6 +37,7 @@ public class PeerClient {
     //keep connection response for saving connection id
     private ConnectResponse connectionResponse;
     private int peerId;
+    private String peerName;
     private InetAddress serverHost;
     private DatagramSocket clientSocket;
     private boolean multicastEnabled;
@@ -48,6 +50,7 @@ public class PeerClient {
         this.peerId = -1;
         this.multicastEnabled = true;
         this.port = MULTICAST_PORT;
+        this.peerName = ByteUtils.generatePeerId();
     }
 
     public PeerClient(String ip, int port) {
@@ -345,13 +348,18 @@ public class PeerClient {
 
     public SharingFile readTorrent(File torrent) {
         //leer un archivo de la carpeta resources
-        MetainfoHandlerSingleFile handler = new MetainfoHandlerSingleFile();
-        //read from resouces
-        handler.parseTorrenFile(torrent.getAbsolutePath());
-        MetainfoFile<InfoDictionarySingleFile> meta = handler.getMetainfo();
-        SharingFile sharingFile = new SharingFile(meta.getInfo().getName(), meta.getInfo().getInfoHash(), meta.getInfo().getLength());
-        sharingFile.setMetaInfo(meta);
-        return sharingFile;
+        try {
+            MetainfoHandlerSingleFile handler = new MetainfoHandlerSingleFile();
+            //read from resouces
+            handler.parseTorrenFile(torrent.getAbsolutePath());
+            MetainfoFile<InfoDictionarySingleFile> meta = handler.getMetainfo();
+            SharingFile sharingFile = new SharingFile(meta.getInfo().getName(), meta.getInfo().getInfoHash(), meta.getInfo().getLength());
+            sharingFile.setMetaInfo(meta);
+            return sharingFile;
+        } catch (Exception e) {
+            System.err.println(e.getLocalizedMessage());
+        }
+        return null;
     }
 
     public void startDownloading(SharingFile shareFile) {

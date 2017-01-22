@@ -2,6 +2,7 @@ package es.deusto.ssdd.gui.view;
 
 import es.deusto.ssdd.gui.model.observ.TorrentObserver;
 import es.deusto.ssdd.jms.TrackerInstance;
+import es.deusto.ssdd.jms.model.TrackerInstanceNodeType;
 import es.deusto.ssdd.jms.model.TrackerStatus;
 
 import javax.swing.*;
@@ -20,6 +21,9 @@ public class TrackerWindow extends JFrame implements TorrentObserver {
     private final JLabel labelTrackerId;
     private final JLabel labelTrackerOnline;
     private final JTable activeTrackersTable;
+    private final JLabel lblClientCount;
+    private final JLabel lblSwarmCount;
+    private final JLabel lblBytesShared;
     private DefaultTableModel activeTrackersTableModel;
 
     private TrackerLogWindow logWindow;
@@ -34,8 +38,6 @@ public class TrackerWindow extends JFrame implements TorrentObserver {
         setLogo();
         //set system theme
         setSystemTheme();
-
-        setTitle("Admin window");
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setBounds(100, 100, 450, 300);
         setMinimumSize(new Dimension(800, 400));
@@ -118,20 +120,20 @@ public class TrackerWindow extends JFrame implements TorrentObserver {
         JLabel lblClientsConnected = new JLabel("Clients connected:");
         panelBottom.add(lblClientsConnected);
 
-        JLabel label_2 = new JLabel("0");
-        panelBottom.add(label_2);
+        lblClientCount = new JLabel("0");
+        panelBottom.add(lblClientCount);
 
         JLabel lblSwarms = new JLabel("Swarms:");
         panelBottom.add(lblSwarms);
 
-        JLabel label_3 = new JLabel("0");
-        panelBottom.add(label_3);
+        lblSwarmCount = new JLabel("0");
+        panelBottom.add(lblSwarmCount);
 
-        JLabel lblSharedFiles = new JLabel("Shared files:");
+        JLabel lblSharedFiles = new JLabel("Sharing bytes:");
         panelBottom.add(lblSharedFiles);
 
-        JLabel label_4 = new JLabel("0");
-        panelBottom.add(label_4);
+        lblBytesShared = new JLabel("0");
+        panelBottom.add(lblBytesShared);
 
         //set window centered
         setLocationRelativeTo(null);
@@ -237,7 +239,12 @@ public class TrackerWindow extends JFrame implements TorrentObserver {
     public void update() {
         //update window title
         if (instance != null) {
-            this.setTitle("Tracker Node :: " + instance.getNodeType());
+            TrackerInstanceNodeType type = instance.getNodeType();
+            if (type != null) {
+                this.setTitle("Tracker Node :: " + instance.getNodeType());
+            } else {
+                this.setTitle("Tracker Node");
+            }
 
             //update ip
             labelTrackerIp.setText(instance.getIp());
@@ -266,15 +273,29 @@ public class TrackerWindow extends JFrame implements TorrentObserver {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                addLogLine("Error: " + e.getLocalizedMessage());
             }
 
             //update status
             TrackerStatus status = instance.getTrackerStatus();
             if (status != null) {
-                this.labelTrackerOnline.setText("" + status);
+                this.labelTrackerOnline.setText(status.name());
                 this.labelTrackerOnline.setForeground(status.getColor());
             }
+
+            //update clients connected
+            int clientCount = instance.getClientCount();
+            this.lblClientCount.setText(String.valueOf(clientCount));
+            //update swarm count
+            int swarmCount = instance.getSwarmCount();
+            this.lblSwarmCount.setText(String.valueOf(swarmCount));
+            //update shared files bytes
+            long shared = instance.getSharingBytesCount();
+            this.lblBytesShared.setText(String.valueOf(shared));
         }
+    }
+
+    public TrackerLogWindow getLogWindow() {
+        return logWindow;
     }
 }

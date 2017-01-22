@@ -1,5 +1,6 @@
 package es.deusto.ssdd.udp;
 
+import bittorrent.udp.AnnounceRequest;
 import bittorrent.udp.BitTorrentUDPRequestMessage;
 import es.deusto.ssdd.jms.TrackerInstance;
 import es.deusto.ssdd.udp.parser.PeerRequestParser;
@@ -46,11 +47,11 @@ public class TrackerUDPServer {
 
     public void backgroundDispatch() throws IOException {
         new Thread(() -> {
-            System.out.println(this.trackerInstance.getTrackerId() + "\t[Starting UDP server on port " + port + "]");
+            this.trackerInstance.addLogLine("Debug: [Starting UDP server on port " + port + "]");
             try {
                 startServer();
             } catch (IOException e) {
-                System.err.println(e.getLocalizedMessage());
+                this.trackerInstance.addLogLine("Error: " + e.getLocalizedMessage());
             }
         }).start();
     }
@@ -67,7 +68,7 @@ public class TrackerUDPServer {
         InetAddress mcIPAddress = null;
         mcIPAddress = InetAddress.getByName(MULTICAST_IP);
         serverSocket = new MulticastSocket(this.port);
-        System.out.println(this.trackerInstance.getTrackerId() + "\tMulticast UDP server running at:" + serverSocket.getLocalSocketAddress());
+        this.trackerInstance.addLogLine("Debug: Multicast UDP server running at:" + serverSocket.getLocalSocketAddress());
         //joint ot multicast group
         serverSocket.joinGroup(mcIPAddress);
         //buffer
@@ -112,17 +113,17 @@ public class TrackerUDPServer {
     private void processData(byte[] receivedBytes, InetAddress clientAddress, int clientPort, DatagramSocket serverSocket) throws IOException {
         //parse data
         if (this.trackerInstance.isMaster()) {
-            byte[] response = parseData(receivedBytes);
+            byte[] response = parseData(clientAddress, clientPort, receivedBytes);
             //send response
             if (response != null && response.length > 0) {
                 DatagramPacket sendPacket = new DatagramPacket(response, response.length, clientAddress, clientPort);
-                System.out.println(getTrackerId() + "\t Sending message to client " + clientAddress.getHostAddress() + " on port " + clientPort);
+                this.trackerInstance.addLogLine("Debug: Sending message to client " + clientAddress.getHostAddress() + " on port " + clientPort);
                 serverSocket.send(sendPacket);
             }
         }
     }
 
-    private byte[] parseData(byte[] receivedBytes) {
+    private byte[] parseData(InetAddress clientAddress, int clientPort, byte[] receivedBytes) {
         //first, deserialize data
         try {
             ByteBuffer buffer = this.deserialize(receivedBytes);
@@ -135,15 +136,15 @@ public class TrackerUDPServer {
                     //validate received message
                     boolean valid = PeerRequestParser.validate(this, value, parsedRequestMessage);
                     if (valid) {
-                        PeerRequestParser.triggerOnReceiveEvent(this, value, parsedRequestMessage);
+                        PeerRequestParser.triggerOnReceiveEvent(this, value, clientAddress, clientPort, parsedRequestMessage);
                         //valid message. response
                         return PeerRequestParser.getResponse(this, value, parsedRequestMessage);
                     } else {
-                        System.err.println(this.trackerInstance.getTrackerId() + "\tInvalid message detected of type " + parsedRequestMessage.getClass().getSimpleName());
+                        this.trackerInstance.addLogLine("Error: Invalid message detected of type " + parsedRequestMessage.getClass().getSimpleName());
                         return PeerRequestParser.getError(value, false, parsedRequestMessage, "invalid message");
                     }
                 } else {
-                    System.err.println(this.trackerInstance.getTrackerId() + "\tNULL message detected ");
+                    this.trackerInstance.addLogLine("Error: NULL message detected ");
                     return PeerRequestParser.getError(value, false, null, "Malformed message");
                 }
             }
@@ -167,7 +168,7 @@ public class TrackerUDPServer {
         //stop the main listener thread
         //close the socket
         serverSocket.close();
-        System.out.println(this.trackerInstance.getTrackerId() + "\tUDP Multicast server stopped");
+        this.trackerInstance.addLogLine("Debug: UDP Multicast server stopped");
     }
 
     public void savePeerIdForValidation(long randomID) {
@@ -192,5 +193,18 @@ public class TrackerUDPServer {
 
     public TrackerInstance getTracker() {
         return this.trackerInstance;
+    }
+
+    public void addLogLine(String data) {
+        this.trackerInstance.addLogLine(data);
+    }
+
+    public void addPeerToSwarm(InetAddress clientAddress, int clientPort, AnnounceRequest request) {
+        this.trackerInstance.addLogLine("Adding PEER to swarm...");
+        this.trackerInstance.addPeerToSwarm(
+                request.getHexInfoHash(),
+                clientAddress.getHostAddress(),
+                clientPort
+        );
     }
 }

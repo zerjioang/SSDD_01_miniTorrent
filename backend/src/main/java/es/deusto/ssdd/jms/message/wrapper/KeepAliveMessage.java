@@ -42,6 +42,7 @@ public class KeepAliveMessage implements Serializable, IJMSMessage {
     @Override
     public void onBroadcastEvent(String currentNodeId) {
         TrackerInstance.getNode(currentNodeId).addLogLine("Stream: KEEP ALIVE SENT");
+        TrackerInstance.getNode(currentNodeId).notifyObserver();
     }
 
     @Override

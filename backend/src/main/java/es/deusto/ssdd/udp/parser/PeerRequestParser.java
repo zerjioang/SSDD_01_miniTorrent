@@ -7,6 +7,8 @@ import es.deusto.ssdd.client.udp.client.PeerClient;
 import es.deusto.ssdd.jms.TrackerInstance;
 import es.deusto.ssdd.udp.TrackerUDPServer;
 
+import java.net.InetAddress;
+
 /**
  * Created by .local on 15/01/2017.
  */
@@ -42,8 +44,8 @@ public enum PeerRequestParser {
         }
 
         @Override
-        protected void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, BitTorrentUDPRequestMessage parsedRequestMessage) {
-            System.out.println(trackerUDPServer.getTrackerId() + "\tConnection request message received");
+        protected void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, InetAddress clientAddress, int clientPort, BitTorrentUDPRequestMessage parsedRequestMessage) {
+            trackerUDPServer.addLogLine("debug: Connection request message received");
         }
 
         @Override
@@ -81,12 +83,15 @@ public enum PeerRequestParser {
                 announceResponse.setPeers(info.getPeers());
                 return announceResponse.getBytes();
             }
-            return getErrorMessage(true, parsedRequestMessage, "No hay peers disponislbes para el fichero solicitado");
+            return getErrorMessage(true, parsedRequestMessage, "No hay peers disponibles para el torrent solicitado");
         }
 
         @Override
-        protected void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, BitTorrentUDPRequestMessage parsedRequestMessage) {
-            System.out.println(trackerUDPServer.getTrackerId() + "\tAnnounce request message received");
+        protected void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, InetAddress clientAddress, int clientPort, BitTorrentUDPRequestMessage parsedRequestMessage) {
+            trackerUDPServer.addLogLine("debug: Announce request message received");
+            //save peer <-> torrent relation as part of swarm data on tracker
+            AnnounceRequest request = (AnnounceRequest) parsedRequestMessage;
+            trackerUDPServer.addPeerToSwarm(clientAddress, clientPort, request);
         }
 
         @Override
@@ -111,8 +116,8 @@ public enum PeerRequestParser {
         }
 
         @Override
-        protected void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, BitTorrentUDPRequestMessage parsedRequestMessage) {
-            System.out.println(trackerUDPServer.getTrackerId() + "\tScrape request message received");
+        protected void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, InetAddress clientAddress, int clientPort, BitTorrentUDPRequestMessage parsedRequestMessage) {
+            trackerUDPServer.addLogLine("debug: Scrape request message received");
         }
 
         @Override
@@ -146,9 +151,9 @@ public enum PeerRequestParser {
         return list[value].getResponse(trackerUDPServer, parsedRequestMessage);
     }
 
-    public static void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, int value, BitTorrentUDPRequestMessage parsedRequestMessage) {
+    public static void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, int value, InetAddress clientAddress, int clientPort, BitTorrentUDPRequestMessage parsedRequestMessage) {
         if (parsedRequestMessage != null)
-            list[value].triggerOnReceiveEvent(trackerUDPServer, parsedRequestMessage);
+            list[value].triggerOnReceiveEvent(trackerUDPServer, clientAddress, clientPort, parsedRequestMessage);
     }
 
     public static byte[] getError(int value, boolean valid, BitTorrentUDPRequestMessage parsedRequestMessage, String customMessage) {
@@ -161,7 +166,7 @@ public enum PeerRequestParser {
 
     protected abstract byte[] getResponse(TrackerUDPServer trackerUDPServer, BitTorrentUDPRequestMessage parsedRequestMessage);
 
-    protected abstract void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, BitTorrentUDPRequestMessage parsedRequestMessage);
+    protected abstract void triggerOnReceiveEvent(TrackerUDPServer trackerUDPServer, InetAddress clientAddress, int clientPort, BitTorrentUDPRequestMessage parsedRequestMessage);
 
     protected abstract byte[] getErrorMessage(boolean valid, BitTorrentUDPRequestMessage parsedRequestMessage, String customMessage);
 }

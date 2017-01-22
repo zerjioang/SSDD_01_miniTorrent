@@ -1,8 +1,11 @@
 package es.deusto.ssdd.jms;
 
+import bittorrent.udp.PeerInfo;
 import es.deusto.ssdd.bittorrent.core.SwarmInfo;
 import es.deusto.ssdd.bittorrent.core.TrackerUtil;
+import es.deusto.ssdd.bittorrent.persistent.ConsensusManager;
 import es.deusto.ssdd.bittorrent.persistent.PersistenceHandler;
+import es.deusto.ssdd.client.udp.model.SharingFile;
 import es.deusto.ssdd.gui.model.observ.TorrentObservable;
 import es.deusto.ssdd.gui.model.observ.TorrentObserver;
 import es.deusto.ssdd.gui.view.TrackerWindow;
@@ -17,10 +20,7 @@ import es.deusto.ssdd.udp.TrackerUDPServer;
 
 import javax.jms.JMSException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -35,8 +35,6 @@ public class TrackerInstance implements Comparable, TorrentObservable {
     private static final String ID_SEPARATOR_TAG = "_";
     private static final ConcurrentHashMap<String, TrackerInstance> map = new ConcurrentHashMap<>();
     private static final int MAX_KEEP_ALIVE_TIME = 5;
-    private static final boolean NODE_OFFLINE_MODE = false;
-    private static final boolean NODE_ONLINE_MODE = true;
 
     // secure concurrent modification allowed variable
     private volatile static AtomicInteger counter = new AtomicInteger(0);
@@ -68,9 +66,18 @@ public class TrackerInstance implements Comparable, TorrentObservable {
     //list of peers sharing a given file
     private HashMap<String, SwarmInfo> peerMap;
     private ArrayList<TorrentObserver> observerList;
+    private boolean connectedToJMS;
+    private Thread keepAliveThread;
+
+    //consensus manager for persistance handling
+    private ConsensusManager consensusManager;
 
     public TrackerInstance() {
         this.observerList = new ArrayList<>();
+
+        //build consensus manager
+        this.consensusManager = new ConsensusManager(this);
+        this.consensusManager.startOnBackground();
 
         //show tracker window
         showTrackerWindow();
@@ -100,14 +107,12 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         masterNode = null;
 
         //init node type
-        nodeType = TrackerInstanceNodeType.MASTER;
-
-        //init keep alive attributes
-        nodeAlive = NODE_ONLINE_MODE;
-        pendingLifetime = new AtomicInteger(MAX_KEEP_ALIVE_TIME);
+        setNodeType(TrackerInstanceNodeType.MASTER);
+        setPendingLifetime(new AtomicInteger(MAX_KEEP_ALIVE_TIME));
 
         //init persistenceHandler
         persistenceHandler = new PersistenceHandler(this);
+        addObserver(persistenceHandler);
     }
 
     public static TrackerInstance getNode(String id) {
@@ -115,13 +120,15 @@ public class TrackerInstance implements Comparable, TorrentObservable {
     }
 
     public void addLogLine(String data) {
-        this.trackerWindow.addLogLine(data);
+        if (this.trackerWindow != null) {
+            this.trackerWindow.addLogLine(data);
+        }
     }
 
     private void deployUDP() throws IOException {
         udpServer = new TrackerUDPServer(this, ip);
         udpServer.backgroundDispatch();
-        this.port = udpServer.getListeningPort();
+        this.setPort(udpServer.getListeningPort());
     }
 
     private synchronized String generateId() {
@@ -162,9 +169,6 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         //start data sync service actors
         thread(getListener(DATA_SYNC_SERVICE), false);
         thread(getSender(DATA_SYNC_SERVICE), false);
-
-        //start keep alive daemon
-        thread(keepaliveDaemon, false);
     }
 
     private void setupDaemons() {
@@ -178,15 +182,27 @@ public class TrackerInstance implements Comparable, TorrentObservable {
 
     private void setupSenderDaemons() {
         //populate maps
-        senderHashMap.put(HANDSHAKE_SERVICE,
-                new JMSMessageSender(this, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
-        );
-        senderHashMap.put(KEEP_ALIVE_SERVICE,
-                new JMSMessageSender(this, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
-        );
-        senderHashMap.put(DATA_SYNC_SERVICE,
-                new JMSMessageSender(this, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
-        );
+        try {
+            senderHashMap.put(HANDSHAKE_SERVICE,
+                    new JMSMessageSender(this, ACTIVE_MQ_SERVER, HANDSHAKE_SERVICE)
+            );
+        } catch (JMSException e) {
+            addLogLine("Error: " + e.getLocalizedMessage());
+        }
+        try {
+            senderHashMap.put(KEEP_ALIVE_SERVICE,
+                    new JMSMessageSender(this, ACTIVE_MQ_SERVER, KEEP_ALIVE_SERVICE)
+            );
+        } catch (JMSException e) {
+            addLogLine("Error: " + e.getLocalizedMessage());
+        }
+        try {
+            senderHashMap.put(DATA_SYNC_SERVICE,
+                    new JMSMessageSender(this, ACTIVE_MQ_SERVER, DATA_SYNC_SERVICE)
+            );
+        } catch (JMSException e) {
+            addLogLine("Error: " + e.getLocalizedMessage());
+        }
     }
 
     private void setupListenerDaemons() {
@@ -205,6 +221,7 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         trackerWindow = new TrackerWindow(getCurrentTrackerInstance());
         trackerWindow.setVisible(true);
         addObserver(trackerWindow);
+        addObserver(trackerWindow.getLogWindow());
     }
 
     private TrackerInstance getCurrentTrackerInstance() {
@@ -280,10 +297,11 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         return olderIdInstance;
     }
 
-    private synchronized void thread(Runnable runnable, boolean daemon) {
+    private synchronized Thread thread(Runnable runnable, boolean daemon) {
         Thread brokerThread = new Thread(runnable);
         brokerThread.setDaemon(daemon);
         brokerThread.start();
+        return brokerThread;
     }
 
     public synchronized void deploy() throws JMSException {
@@ -304,13 +322,18 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         deployServices();
 
         //init keep alive daemon
-        keepaliveDaemon = new KeepAliveDaemon(this);
-
-        this.setTrackerStatus(TrackerStatus.ONLINE);
+        startkeepAlive();
 
         //send first hello world message for tracker master detection
         MessageCollection message = MessageCollection.HELLO_WORLD;
         getSender(HANDSHAKE_SERVICE).send(message);
+    }
+
+    private void startkeepAlive() {
+        keepaliveDaemon = new KeepAliveDaemon(this);
+        keepAliveThread = new Thread(keepaliveDaemon);
+        keepAliveThread.start();
+        notifyObserver();
     }
 
     private void autoDeployActiveMq() {
@@ -327,6 +350,7 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         try {
             Runtime.getRuntime().exec(cmd);
             //wait 10 second (average) until full deploy
+            this.addLogLine("debug: Waiting 10 s to Active MQ to deploy...");
             Thread.sleep(10000);
             localDeployed = true;
         } catch (IOException | InterruptedException e) {
@@ -462,7 +486,7 @@ public class TrackerInstance implements Comparable, TorrentObservable {
 
     private void stopSendingKeepAlives() {
         //stop sending keep alives
-        this.nodeAlive = NODE_OFFLINE_MODE;
+        this.nodeAlive = false;
         notifyObserver();
     }
 
@@ -591,5 +615,80 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         for (TorrentObserver o : observerList) {
             o.update();
         }
+    }
+
+    public boolean isConnectedToJMS() {
+        return connectedToJMS;
+    }
+
+    public void setConnectedToJMS(boolean connectedToJMS) {
+        this.connectedToJMS = connectedToJMS;
+        this.setNodeAlive(connectedToJMS);
+        if (connectedToJMS) {
+            //re-lauch keep alive sender
+            if (keepAliveThread.getState() == Thread.State.TERMINATED) {
+                startkeepAlive();
+            }
+            this.setTrackerStatus(TrackerStatus.ONLINE);
+        } else {
+            this.setTrackerStatus(TrackerStatus.OFFLINE);
+        }
+        this.notifyObserver();
+    }
+
+    public int getClientCount() {
+        int total = 0;
+        if (peerMap != null) {
+            for (SwarmInfo si : peerMap.values()) {
+                List<PeerInfo> list = si.getPeers();
+                if (list != null) {
+                    total += list.size();
+                }
+            }
+        }
+        return total;
+    }
+
+    public long getSharingBytesCount() {
+        long total = 0;
+        if (peerMap != null) {
+            for (SwarmInfo si : peerMap.values()) {
+                SharingFile file = si.getFile();
+                if (file != null) {
+                    total += file.getTotalBytes();
+                }
+            }
+        }
+        return total;
+    }
+
+    public int getSwarmCount() {
+        if (peerMap != null) {
+            return this.peerMap.size();
+        }
+        return 0;
+    }
+
+    public void addPeerToSwarm(String hexInfoHash, String hostAddress, int clientPort) {
+        SwarmInfo swarm = this.peerMap.get(hexInfoHash);
+        if (swarm == null) {
+            this.addLogLine("debug: building a new swarm for " + hexInfoHash);
+            swarm = new SwarmInfo();
+        }
+        this.addLogLine("debug: adding peer (" + hostAddress + ", " + clientPort + ") to " + hexInfoHash + " swarm");
+        PeerInfo peerInfo = new PeerInfo();
+        peerInfo.setPort(clientPort);
+        swarm.addPeer(peerInfo);
+        //increase by +1 the number of leecher since this method is called when a new announce request is received
+        swarm.increaseLeechersBy(1);
+        this.peerMap.put(hexInfoHash, swarm);
+        //save this peer info on db
+        String insertNewPeerQuery = persistenceHandler.getInsertNewPeerQuery(hostAddress, clientPort);
+        persistenceHandler.sync(insertNewPeerQuery);
+        notifyObserver();
+    }
+
+    public PersistenceHandler getPersistenceHandler() {
+        return persistenceHandler;
     }
 }

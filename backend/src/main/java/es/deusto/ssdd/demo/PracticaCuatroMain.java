@@ -14,14 +14,14 @@ public class PracticaCuatroMain {
             TrackerInstance tracker = new TrackerInstance();
             tracker.deploy();
         }
-        //se simula un cliente udp
+        //se crea un cliente/peer udp
         PeerClient client = new PeerClient();
 
-        //se le asigna una ventana a ese peer
+        //se le asigna una ventana a ese cliente
         ClientWindow clientWindow = new ClientWindow(client);
         clientWindow.setVisible(true);
 
-        //se connecta
+        //se conecta
         client.connect();
     }
 }

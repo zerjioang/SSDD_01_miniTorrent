@@ -1,6 +1,7 @@
 package es.deusto.ssdd.demo;
 
 
+import es.deusto.ssdd.client.udp.client.PeerClient;
 import es.deusto.ssdd.jms.TrackerInstance;
 
 public class PracticaTresMain {
@@ -13,8 +14,8 @@ public class PracticaTresMain {
             tracker.deploy();
         }
         //se simula un cliente udp
-        //PeerClient client = new PeerClient();
+        PeerClient client = new PeerClient();
         //this method simulates a file sharing communication. Use it for testing connection and response messages
-        //client.test();
+        client.test();
     }
 }

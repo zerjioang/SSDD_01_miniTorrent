@@ -24,21 +24,17 @@ public class JMSMessageSender implements Runnable {
     private boolean keepAlive;
     private ArrayList<MessageCollection> messagesToSend;
 
-    public JMSMessageSender(TrackerInstance tracker, String connectionId, TrackerDaemonSpec trackerSpecs) {
+    public JMSMessageSender(TrackerInstance tracker, String connectionId, TrackerDaemonSpec trackerSpecs) throws JMSException {
         this.tracker = tracker;
         this.trackerId = tracker.getTrackerId();
-        try {
-            if (trackerSpecs == null)
-                throw new JMSException("A tracker service spec is needed for JMS Message sender creation");
-            if (connectionId == null)
-                throw new JMSException("A server connection ID is needed for JMS Message sender creation");
-            this.serviceName = trackerSpecs.getServiceName();
-            this.connectionId = connectionId;
-            this.keepAlive = true;
-            this.messagesToSend = new ArrayList<>();
-        } catch (JMSException e) {
-            TrackerInstance.getNode(trackerId).addLogLine("Error: " + e.getLocalizedMessage());
-        }
+        if (trackerSpecs == null)
+            throw new JMSException("A tracker service spec is needed for JMS Message sender creation");
+        if (connectionId == null)
+            throw new JMSException("A server connection ID is needed for JMS Message sender creation");
+        this.serviceName = trackerSpecs.getServiceName();
+        this.connectionId = connectionId;
+        this.keepAlive = true;
+        this.messagesToSend = new ArrayList<>();
     }
 
     public void run() {
@@ -49,6 +45,9 @@ public class JMSMessageSender implements Runnable {
 
             // Create a Session
             session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+
+            //thread is connected to jms.
+            TrackerInstance.getNode(trackerId).setConnectedToJMS(true);
 
             // Create the destination Queue
             destination = createTopic(session);
@@ -71,7 +70,7 @@ public class JMSMessageSender implements Runnable {
             closeSender(connection, session);
             TrackerInstance.getNode(trackerId).addLogLine("Debug: JMS Daemon sender [STOPPED]");
         } catch (Exception ex) {
-            TrackerInstance.getNode(trackerId).addLogLine("Error: JMSMessageSender error: " + ex.getMessage());
+            TrackerInstance.getNode(trackerId).addLogLine("Error: JMSMessageSender " + ex.getClass().getSimpleName() + " " + ex.getMessage());
         }
     }
 
@@ -90,7 +89,7 @@ public class JMSMessageSender implements Runnable {
                         m.onBroadcastEvent(trackerId);
                     }
                 } catch (JMSException e) {
-                    e.printStackTrace();
+                    TrackerInstance.getNode(trackerId).addLogLine("Error: " + e.getLocalizedMessage());
                 }
             }
         }).start();
