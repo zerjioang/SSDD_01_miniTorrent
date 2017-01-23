@@ -55,7 +55,7 @@ public enum MessageCollection {
                             new BinaryMessage(
                                     source.getTracker().getTrackerId(),
                                     this.getRemoteNode().getTrackerId(),
-                                    source.getTracker().getDatabaseArray()
+                                    source.getTracker().getDatabaseInfoAsArray()
                             )
                     );
         }

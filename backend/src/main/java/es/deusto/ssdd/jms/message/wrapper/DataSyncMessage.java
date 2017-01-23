@@ -9,12 +9,12 @@ public class DataSyncMessage implements Serializable, IJMSMessage {
 
     private final String sourceTrackerId;
     private final String remoteTrackerId;
-    private String query;
+    private String payload;
 
     public DataSyncMessage(String sourceTrackerId, String remoteTrackerId) {
         this.sourceTrackerId = sourceTrackerId;
         this.remoteTrackerId = remoteTrackerId;
-        this.query = null;
+        this.payload = null;
     }
 
     @Override
@@ -24,10 +24,12 @@ public class DataSyncMessage implements Serializable, IJMSMessage {
         //proces message only, if it is for me
         if (currentNodeId.equals(remoteTrackerId)) {
             TrackerInstance thisNode = TrackerInstance.getNode(currentNodeId);
-            if (thisNode != null && this.query != null) {
+            if (thisNode != null && this.payload != null) {
                 //update data sync request on local storage
-                thisNode.syncData(query);
-                thisNode.addLogLine("Stream: data sync message received from " + sourceTrackerId);
+                if(thisNode.canSaveData()){
+                    thisNode.syncData(payload);
+                    thisNode.addLogLine("Stream: data sync message received from " + sourceTrackerId);
+                }
             }
         }
     }

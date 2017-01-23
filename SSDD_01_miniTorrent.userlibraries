@@ -3,6 +3,9 @@
   <library name="Maven: aopalliance:aopalliance:1.0">
     <archive path="C:/Users/.local/.m2/repository/aopalliance/aopalliance/1.0/aopalliance-1.0.jar" />
   </library>
+  <library name="Maven: com.google.code.gson:gson:2.8.0">
+    <archive path="C:/Users/.local/.m2/repository/com/google/code/gson/gson/2.8.0/gson-2.8.0.jar" />
+  </library>
   <library name="Maven: com.sun.mail:javax.mail:1.5.0">
     <archive path="C:/Users/.local/.m2/repository/com/sun/mail/javax.mail/1.5.0/javax.mail-1.5.0.jar" />
   </library>

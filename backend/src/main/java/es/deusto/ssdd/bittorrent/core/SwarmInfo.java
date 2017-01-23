@@ -2,23 +2,23 @@ package es.deusto.ssdd.bittorrent.core;
 
 import bittorrent.udp.PeerInfo;
 import es.deusto.ssdd.client.udp.model.SharingFile;
+import es.deusto.ssdd.jms.TrackerInstance;
 
 import java.util.List;
 
 public class SwarmInfo {
 
-    private int seeders, leechers, interval;
+    private String owner;
+    private int seeders;
+    private int leechers;
+    private int interval;
+    private int timesDownloaded;
+
     private List<PeerInfo> peers;
-    private SharingFile file;
+    private transient SharingFile file;
 
-    public SwarmInfo() {
-
-    }
-
-    public SwarmInfo(int seeders, int leechers, List<PeerInfo> peers) {
-        this.seeders = seeders;
-        this.leechers = leechers;
-        this.peers = peers;
+    public SwarmInfo(TrackerInstance instance) {
+        this.owner = instance.getTrackerId();
     }
 
     public int getSeeders() {
@@ -61,6 +61,14 @@ public class SwarmInfo {
         this.file = file;
     }
 
+    public int getTimesDownloaded() {
+        return timesDownloaded;
+    }
+
+    public void setTimesDownloaded(int timesDownloaded) {
+        this.timesDownloaded = timesDownloaded;
+    }
+
     public void addPeer(PeerInfo peerInfo) {
         if (peerInfo != null) {
             this.peers.add(peerInfo);
@@ -73,5 +81,13 @@ public class SwarmInfo {
 
     public void increaseSeedersBy(int i) {
         this.seeders += i;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
     }
 }

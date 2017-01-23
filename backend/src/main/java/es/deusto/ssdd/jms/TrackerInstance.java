@@ -1,10 +1,12 @@
 package es.deusto.ssdd.jms;
 
 import bittorrent.udp.PeerInfo;
+import bittorrent.udp.ScrapeInfo;
 import es.deusto.ssdd.bittorrent.core.SwarmInfo;
 import es.deusto.ssdd.bittorrent.core.TrackerUtil;
 import es.deusto.ssdd.bittorrent.persistent.ConsensusManager;
 import es.deusto.ssdd.bittorrent.persistent.PersistenceHandler;
+import es.deusto.ssdd.bittorrent.persistent.SwarmData;
 import es.deusto.ssdd.client.udp.model.SharingFile;
 import es.deusto.ssdd.gui.model.observ.TorrentObservable;
 import es.deusto.ssdd.gui.model.observ.TorrentObserver;
@@ -64,7 +66,7 @@ public class TrackerInstance implements Comparable, TorrentObservable {
     //sender map
     private HashMap<TrackerDaemonSpec, JMSMessageSender> senderHashMap;
     //list of peers sharing a given file
-    private HashMap<String, SwarmInfo> peerMap;
+    private SwarmData peerMap;
     private ArrayList<TorrentObserver> observerList;
     private boolean connectedToJMS;
     private Thread keepAliveThread;
@@ -96,7 +98,7 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         trackerNodeList = new HashMap<>();
 
         //init peer map
-        this.peerMap = new HashMap<>();
+        this.setPeerMap(new SwarmData());
 
         setupDaemons();
 
@@ -310,7 +312,8 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         try {
             deployUDP();
         } catch (IOException e) {
-            System.err.println(e.getLocalizedMessage());
+            addLogLine("error: could not deployUDP server");
+            addLogLine("error: caused by "+e.getLocalizedMessage());
         }
 
         //check if localhost active mq is active. otherwise, execute .bat
@@ -354,7 +357,8 @@ public class TrackerInstance implements Comparable, TorrentObservable {
             Thread.sleep(10000);
             localDeployed = true;
         } catch (IOException | InterruptedException e) {
-            System.err.println("Could not autodeploy activemq: " + e.getLocalizedMessage());
+            addLogLine("error: deploying Active MQ");
+            addLogLine("error: caused by "+e.getLocalizedMessage());
         }
     }
 
@@ -557,10 +561,6 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         return this.persistenceHandler.getDatabaseName();
     }
 
-    public byte[] getDatabaseArray() {
-        return this.persistenceHandler.getDatabaseArray();
-    }
-
     //send current database to remote node
     public void sendDatabaseBack(TrackerInstance remoteNode) {
         try {
@@ -587,15 +587,15 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         notifyObserver();
     }
 
-    public void syncData(String query) {
+    public void syncData(String data) {
         addLogLine(trackerId + " Synchronization received");
-        persistenceHandler.sync(query);
+        this.persistenceHandler.saveData(data);
     }
 
     public SwarmInfo findAnnounceInfoOf(String hexInfoHash) {
         addLogLine(this.trackerId + "\tFinding torrent metainfo about " + hexInfoHash);
         if (hexInfoHash != null) {
-            return this.peerMap.get(hexInfoHash);
+            return this.getPeerMap().get(hexInfoHash);
         }
         return null;
     }
@@ -638,8 +638,8 @@ public class TrackerInstance implements Comparable, TorrentObservable {
 
     public int getClientCount() {
         int total = 0;
-        if (peerMap != null) {
-            for (SwarmInfo si : peerMap.values()) {
+        if (getPeerMap() != null) {
+            for (SwarmInfo si : getPeerMap().values()) {
                 List<PeerInfo> list = si.getPeers();
                 if (list != null) {
                     total += list.size();
@@ -651,8 +651,8 @@ public class TrackerInstance implements Comparable, TorrentObservable {
 
     public long getSharingBytesCount() {
         long total = 0;
-        if (peerMap != null) {
-            for (SwarmInfo si : peerMap.values()) {
+        if (getPeerMap() != null) {
+            for (SwarmInfo si : getPeerMap().values()) {
                 SharingFile file = si.getFile();
                 if (file != null) {
                     total += file.getTotalBytes();
@@ -663,17 +663,17 @@ public class TrackerInstance implements Comparable, TorrentObservable {
     }
 
     public int getSwarmCount() {
-        if (peerMap != null) {
-            return this.peerMap.size();
+        if (getPeerMap() != null) {
+            return this.getPeerMap().size();
         }
         return 0;
     }
 
     public void addPeerToSwarm(String hexInfoHash, String hostAddress, int clientPort) {
-        SwarmInfo swarm = this.peerMap.get(hexInfoHash);
+        SwarmInfo swarm = this.getPeerMap().get(hexInfoHash);
         if (swarm == null) {
             this.addLogLine("debug: building a new swarm for " + hexInfoHash);
-            swarm = new SwarmInfo();
+            swarm = new SwarmInfo(this);
         }
         this.addLogLine("debug: adding peer (" + hostAddress + ", " + clientPort + ") to " + hexInfoHash + " swarm");
         PeerInfo peerInfo = new PeerInfo();
@@ -681,14 +681,71 @@ public class TrackerInstance implements Comparable, TorrentObservable {
         swarm.addPeer(peerInfo);
         //increase by +1 the number of leecher since this method is called when a new announce request is received
         swarm.increaseLeechersBy(1);
-        this.peerMap.put(hexInfoHash, swarm);
+        this.getPeerMap().put(hexInfoHash, swarm);
         //save this peer info on db
-        String insertNewPeerQuery = persistenceHandler.getInsertNewPeerQuery(hostAddress, clientPort);
-        persistenceHandler.sync(insertNewPeerQuery);
         notifyObserver();
     }
 
     public PersistenceHandler getPersistenceHandler() {
         return persistenceHandler;
+    }
+
+    public List<ScrapeInfo> findSwarmInfo(List<String> infoHashes) {
+        if(infoHashes!=null){
+            List<ScrapeInfo> info = new ArrayList<>();
+            for (String hash : infoHashes){
+                ScrapeInfo scrapeInfo = this.findScrapeInfoOf(hash);
+                if(scrapeInfo!=null){
+                    info.add(scrapeInfo);
+                }
+            }
+            return info;
+        }
+        return null;
+    }
+
+    private ScrapeInfo findScrapeInfoOf(String hash) {
+        if(hash!=null){
+            SwarmInfo data = this.getPeerMap().get(hash);
+            if(data!=null){
+                ScrapeInfo scrapeData = new ScrapeInfo();
+                scrapeData.setCompleted(data.getTimesDownloaded());
+                scrapeData.setLeechers(data.getLeechers());
+                scrapeData.setSeeders(data.getSeeders());
+                return scrapeData;
+            }
+        }
+        return null;
+    }
+
+    public SwarmData getSwarmInfo() {
+        return this.getPeerMap();
+    }
+
+    public byte[] getDatabaseInfoAsArray() {
+        return this.persistenceHandler.getDatabaseInfoAsArray();
+    }
+
+    public void notifyDatabaseHasChanged() {
+        //send first hello world message for tracker master detection
+        try {
+            MessageCollection message = MessageCollection.SYNC;
+            getSender(DATA_SYNC_SERVICE).send(message);
+        } catch (JMSException e) {
+            addLogLine("error: could not send database consensus request");
+            addLogLine("error: caused by "+e.getLocalizedMessage());
+        }
+    }
+
+    public boolean canSaveData() {
+        return this.persistenceHandler.canSaveData();
+    }
+
+    public SwarmData getPeerMap() {
+        return peerMap;
+    }
+
+    public void setPeerMap(SwarmData peerMap) {
+        this.peerMap = peerMap;
     }
 }

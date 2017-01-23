@@ -8,6 +8,11 @@ package bittorrent.udp;
  */
 public class ScrapeInfo {
 
+    /*
+        complete = número de seeders del swarm
+        downloaded = número de veces que se ha descargado el contenido.
+        incomplete = número de leechers del swarm
+     */
     private int leechers;
     private int completed;
     private int seeders;

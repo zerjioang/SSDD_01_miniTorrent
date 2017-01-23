@@ -2,6 +2,7 @@ package es.deusto.ssdd.udp;
 
 import bittorrent.udp.AnnounceRequest;
 import bittorrent.udp.BitTorrentUDPRequestMessage;
+import bittorrent.udp.ScrapeInfo;
 import es.deusto.ssdd.jms.TrackerInstance;
 import es.deusto.ssdd.udp.parser.PeerRequestParser;
 
@@ -13,6 +14,7 @@ import java.net.MulticastSocket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Created by .local on 15/12/2016.
@@ -206,5 +208,9 @@ public class TrackerUDPServer {
                 clientAddress.getHostAddress(),
                 clientPort
         );
+    }
+
+    public List<ScrapeInfo> findSwarmInfo(List<String> infoHashes) {
+        return this.trackerInstance.findSwarmInfo(infoHashes);
     }
 }

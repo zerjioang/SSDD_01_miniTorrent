@@ -8,6 +8,7 @@ import es.deusto.ssdd.jms.TrackerInstance;
 import es.deusto.ssdd.udp.TrackerUDPServer;
 
 import java.net.InetAddress;
+import java.util.List;
 
 /**
  * Created by .local on 15/01/2017.
@@ -107,12 +108,27 @@ public enum PeerRequestParser {
 
         @Override
         protected boolean validate(TrackerUDPServer trackerUDPServer, BitTorrentUDPRequestMessage parsedRequestMessage) {
-            return false;
+            ScrapeRequest scrapeRequest = (ScrapeRequest) parsedRequestMessage;
+            return scrapeRequest.getBytes().length >= 16 &&
+                    scrapeRequest.getAction() == BitTorrentUDPMessage.Action.SCRAPE &&
+                    scrapeRequest.getInfoHashes()!=null &&
+                    scrapeRequest.getInfoHashes().size() > 0 &&
+                    scrapeRequest.getInfoHashes().size() <= 74 && //max allowed size in one request
+                    trackerUDPServer.isConnectionIdStillValid(scrapeRequest.getConnectionId());
         }
 
         @Override
         protected byte[] getResponse(TrackerUDPServer trackerUDPServer, BitTorrentUDPRequestMessage parsedRequestMessage) {
-            return new byte[0];
+            ScrapeRequest scrapeRequest = (ScrapeRequest) parsedRequestMessage;
+            ScrapeResponse scrapeResponse = new ScrapeResponse();
+            //transaction id el que envio el peer
+            scrapeResponse.setTransactionId(parsedRequestMessage.getTransactionId());
+            List<ScrapeInfo> info = trackerUDPServer.findSwarmInfo(scrapeRequest.getInfoHashes());
+            if(info!=null){
+                scrapeResponse.setScrapeInfos(info);
+                return scrapeResponse.getBytes();
+            }
+            return getErrorMessage(true, parsedRequestMessage, "No hay información scrape para los infohash solicitados");
         }
 
         @Override

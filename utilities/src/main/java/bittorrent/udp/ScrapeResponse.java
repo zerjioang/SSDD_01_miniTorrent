@@ -92,4 +92,10 @@ public class ScrapeResponse extends BitTorrentUDPMessage {
             this.scrapeInfos.add(scrapeInfo);
         }
     }
+
+    public void setScrapeInfos(List<ScrapeInfo> info){
+        if(info!=null){
+            this.scrapeInfos = info;
+        }
+    }
 }
