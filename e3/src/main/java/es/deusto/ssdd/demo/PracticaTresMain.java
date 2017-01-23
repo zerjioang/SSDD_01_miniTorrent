@@ -2,7 +2,7 @@ package es.deusto.ssdd.demo;
 
 
 import es.deusto.ssdd.client.udp.client.PeerClient;
-import es.deusto.ssdd.jms.TrackerInstance;
+import es.deusto.ssdd.tracker.jms.TrackerInstance;
 
 public class PracticaTresMain {
 

@@ -19,8 +19,6 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 
-/backend/target/
-
 #eclipse crap
 //.settings//
 .classpath
@@ -29,5 +27,3 @@ hs_err_pid*
 backend/.classpath
 backend/.project
 backend/.settings/
-dev/
-gui/
