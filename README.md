@@ -2,7 +2,7 @@
 
 Team 1 Minitorrent tracker project.
 
-**This project is no loger supported, but it is licensed under GNUv3 so that following that license, you can continue working on it.**
+**This project is no longer supported, but it is licensed under GNUv3 so that following that license, you can continue working on it.**
 
 # Contribution
 
